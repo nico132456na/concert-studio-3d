@@ -55,8 +55,8 @@ export function Projects() {
     if (!p) return;
     try {
       const text = await exportProject(p);
-      downloadText(`${p.name.replace(/[^\w\- ]+/g, '').trim() || 'concert'}.concert.json`, text);
-      toast('Export started', 'success');
+      const done = await downloadText(`${p.name.replace(/[^\w\- ]+/g, '').trim() || 'concert'}.concert.json`, text);
+      if (done) toast('Export ready', 'success');
     } catch (e) {
       toast(`Export failed: ${(e as Error).message}`, 'error');
     }

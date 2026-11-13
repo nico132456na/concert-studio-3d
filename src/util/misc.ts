@@ -74,7 +74,24 @@ export function hexToHsv(hex: string): [number, number, number] {
   return [h, max ? d / max : 0, max];
 }
 
-export function downloadText(filename: string, text: string, mime = 'application/json') {
+/**
+ * Offer a file to the user. Inside the claude.ai artifact viewer plain downloads are blocked,
+ * so use its `downloads` capability when present; otherwise a normal browser download.
+ */
+export async function downloadText(filename: string, text: string, mime = 'application/json'): Promise<boolean> {
+  const host = (window as any).claude;
+  if (host?.use) {
+    try {
+      const dl = await host.use('downloads');
+      if (dl) {
+        await dl.save({ filename, data: text });
+        return true;
+      }
+    } catch (e: any) {
+      if (e?.code === 'declined') return false;
+      if (e?.code && e.code !== 'unavailable' && e.code !== 'not_granted') throw new Error(e.message || e.code);
+    }
+  }
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -84,6 +101,7 @@ export function downloadText(filename: string, text: string, mime = 'application
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return true;
 }
 
 export function timeAgo(ts: number) {
