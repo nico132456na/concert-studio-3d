@@ -12,7 +12,7 @@ import type { Vec3 } from '../types';
 type Pose = { pos: Vec3; target: Vec3 };
 
 /** Keep indoor cameras inside the room so walls and roof never block the view. */
-function clampIndoor(pose: Pose, a: ArenaDef): Pose {
+export function clampIndoor(pose: Pose, a: ArenaDef): Pose {
   if (!a.ceiling) return pose;
   const f = a.floor;
   const k = a.kind === 'bowl' ? 1.55 : 0.92;
@@ -20,7 +20,7 @@ function clampIndoor(pose: Pose, a: ArenaDef): Pose {
   const hx = ((f.xMax - f.xMin) / 2) * k, hz = ((f.zMax - f.zMin) / 2) * k;
   const [x, y, z] = pose.pos;
   return {
-    pos: [Math.max(cx - hx, Math.min(cx + hx, x)), Math.max(1, Math.min(a.ceiling - 2.5, y)), Math.max(cz - hz, Math.min(cz + hz, z))],
+    pos: [Math.max(cx - hx, Math.min(cx + hx, x)), Math.max(1, Math.min(a.ceiling * 0.82, y)), Math.max(cz - hz, Math.min(cz + hz, z))],
     target: pose.target,
   };
 }

@@ -20,6 +20,8 @@ interface ShowState {
   liveEffect: 'none' | 'strobe' | 'pulse' | 'rainbow';
   fx: { type: 'confetti' | 'pyro' | 'smoke' | 'flash'; t: number }[];
   bpm: number;
+  hype: number;
+  phoneLights: boolean;
   set: (p: Partial<ShowState>) => void;
   activateScene: (scene: LightScene, fade?: number) => void;
   clearOverride: () => void;
@@ -41,6 +43,8 @@ export const useShow = create<ShowState>((set, get) => ({
   liveEffect: 'none',
   fx: [],
   bpm: 124,
+  hype: 0,
+  phoneLights: false,
   set: (p) => set(p),
   activateScene: (scene, fade) =>
     set({

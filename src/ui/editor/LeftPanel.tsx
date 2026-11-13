@@ -1,19 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   X, Square, Circle, Hexagon, MoveVertical, Footprints, TrendingUp, Minus, Monitor, RectangleVertical, RectangleHorizontal, CircleDot, Tv, Columns2, Grid3x3,
   GalleryHorizontal, Grip, BetweenHorizontalStart, TowerControl, Frame, Rainbow, Construction, Theater, Square as Glass, Sailboat, Box, Globe, Torus, Triangle, Cylinder,
   Cone, ChevronRight, Lightbulb, Zap, Sun, Flashlight, Eye, EyeOff, Lock, Unlock, Shuffle, Layers,
-  type LucideIcon,
+  type LucideIcon, PenTool, Save, Trash2,
 } from 'lucide-react';
 import { useUI } from '../../state/uiStore';
-import { useProject, edit } from '../../state/projectStore';
-import { OBJECT_DEFS, FIXTURE_DEFS, CATEGORY_LABEL, type LibraryCategory } from '../../data/library';
+import { useProject, edit, getProject } from '../../state/projectStore';
+import { OBJECT_DEFS, FIXTURE_DEFS, CATEGORY_LABEL, type LibraryCategory, type ObjectDef } from '../../data/library';
+import { useThumbnail } from '../../three/thumbnails';
+import { useTemplates, type UserTemplate } from '../../storage/userTemplates';
+import { CustomShapeModal } from './CustomShape';
+import { toast } from '../../state/uiStore';
 import { TEMPLATES } from '../../data/templates';
 import { MATERIAL_PRESETS } from '../../data/materials';
 import { DEFAULT_STAGE, type StageParams, type StageShape } from '../../data/builders';
 import type { ObjectKind, FixtureType } from '../../types';
-import { addFixture, addObject, applyDesign, randomize, rebuildMainStage } from './actions';
-import { Seg, Slider, Toggle, Confirm } from '../components';
+import { addFixture, addObject, applyDesign, randomize, rebuildMainStage, mergeDesign, freshIds } from './actions';
+import { Seg, Slider, Toggle, Confirm, PromptModal } from '../components';
 import { useSettings } from '../../state/settingsStore';
 
 const ICONS: Partial<Record<ObjectKind, LucideIcon>> = {
@@ -30,26 +34,33 @@ const FX_ICONS: Partial<Record<FixtureType, LucideIcon>> = {
 type Tab = LibraryCategory | 'lights' | 'templates';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'stage', label: 'Stage' },
+  { id: 'shapes', label: 'Advanced' },
+  { id: 'structure', label: 'Architecture' },
+  { id: 'rigging', label: 'Truss' },
   { id: 'led', label: 'LED' },
+  { id: 'audio', label: 'Sound' },
   { id: 'lights', label: 'Lights' },
-  { id: 'structure', label: 'Structures' },
   { id: 'soft', label: 'Panels' },
-  { id: 'decor', label: 'Shapes' },
+  { id: 'decor', label: 'Decor' },
   { id: 'templates', label: 'Templates' },
 ];
 
 function StageGenerator() {
   const [p, setP] = useState<StageParams>(DEFAULT_STAGE);
+  const hasMain = useProject((st) => !!st.project?.objects.some((o) => o.tag === 'main'));
   const [active, setActive] = useState(false);
+  // every change builds immediately — nothing to "confirm"
   const up = (patch: Partial<StageParams>) => {
     const n = { ...p, ...patch };
     setP(n);
-    if (active) rebuildMainStage(n);
+    setActive(true);
+    rebuildMainStage(n);
+    if (!active && !hasMain) useUI.getState().bump('stage');
   };
   return (
     <div className="card" style={{ cursor: 'default' }}>
       <div className="card-title">Main stage builder</div>
-      <div className="card-sub" style={{ marginBottom: 12 }}>Shape your main deck. Rebuilds parts tagged “Main”.</div>
+      <div className="card-sub" style={{ marginBottom: 12 }}>Tap a shape — it appears instantly. Sliders reshape it live.</div>
       <div className="field">
         <Seg<StageShape>
           value={p.shape}
@@ -85,8 +96,67 @@ function StageGenerator() {
       >
         {active ? 'Rebuild main stage' : 'Build main stage'}
       </button>
-      {active && <div className="hint" style={{ marginTop: 8 }}>Sliders now update the stage live.</div>}
+      {(active || hasMain) && <div className="hint" style={{ marginTop: 8 }}>Main stage parts are tagged “Main” and rebuild as you change settings.</div>}
     </div>
+  );
+}
+
+function ObjectTile({ def }: { def: ObjectDef }) {
+  const thumb = useThumbnail(def.id);
+  const I = ICONS[def.kind] ?? Box;
+  return (
+    <button className="tile" onClick={() => addObject(def.id)} data-tut={`add-${def.id}`}>
+      {thumb ? <img src={thumb} alt="" width={56} height={56} style={{ width: 56, height: 56 }} /> : <I size={26} />}
+      <span className="t-label">{def.label}</span>
+      <span className="t-hint">{def.hint}</span>
+    </button>
+  );
+}
+
+function MyTemplates() {
+  const { list, load, add, remove } = useTemplates();
+  const [naming, setNaming] = useState(false);
+  const [confirm, setConfirm] = useState<UserTemplate | null>(null);
+  useEffect(() => {
+    load().catch(() => {});
+  }, [load]);
+  const selection = useUI((s) => s.selection);
+  const save = async (name: string) => {
+    const p = getProject();
+    if (!p) return;
+    const sel = new Set(selection);
+    const objects = selection.length ? p.objects.filter((o) => sel.has(o.id)) : p.objects;
+    const fixtures = selection.length ? p.fixtures.filter((f) => sel.has(f.id)) : p.fixtures;
+    try {
+      await add(name, { objects, fixtures, scenes: selection.length ? [] : p.scenes, cues: selection.length ? [] : p.cues, groups: [] });
+      toast('Design saved to My Designs', 'success');
+    } catch (e) {
+      toast(`Could not save: ${(e as Error).message}`, 'error');
+    }
+    setNaming(false);
+  };
+  return (
+    <>
+      <div className="section-title">My designs</div>
+      <button className="btn block" onClick={() => setNaming(true)}>
+        <Save size={16} /> {selection.length ? `Save ${selection.length} selected as a design` : 'Save whole stage as a design'}
+      </button>
+      {list.length === 0 && <div className="hint" style={{ marginTop: 8 }}>Saved designs can be reused in any project.</div>}
+      {list.map((t) => (
+        <div key={t.id} className="scene-row" style={{ marginTop: 8 }}>
+          <div className="scene-go" style={{ cursor: 'default' }}>
+            {t.name} <span className="hint">· {t.objectCount} parts</span>
+          </div>
+          <button className="btn small" onClick={() => mergeDesign(t.seed)}>Add</button>
+          <button className="btn small" onClick={() => setConfirm(t)}>Use</button>
+          <button className="icon-btn" onClick={() => remove(t.id)} aria-label="Delete"><Trash2 size={18} /></button>
+        </div>
+      ))}
+      {naming && <PromptModal title="Name this design" initial="My stage design" onClose={() => setNaming(false)} onDone={save} />}
+      {confirm && (
+        <Confirm text={`Replace the current design with “${confirm.name}”? You can undo.`} yes="Replace" onNo={() => setConfirm(null)} onYes={() => { applyDesign(freshIds(confirm.seed)); setConfirm(null); }} />
+      )}
+    </>
   );
 }
 
@@ -94,6 +164,7 @@ export function LibraryPanel() {
   const set = useUI((s) => s.set);
   const [tab, setTab] = useState<Tab>('stage');
   const [confirmT, setConfirmT] = useState<(typeof TEMPLATES)[number] | null>(null);
+  const [drawing, setDrawing] = useState(false);
   const beginner = useSettings((s) => s.editorMode) === 'beginner';
   return (
     <div className="panel left-panel" data-tut="library">
@@ -115,19 +186,17 @@ export function LibraryPanel() {
       </div>
       <div className="panel-body">
         {beginner && tab !== 'templates' && <div className="hint" style={{ marginBottom: 12 }}>Tap an item — it appears where the camera is looking. Then drag it into place.</div>}
+        {tab === 'stage' && (
+          <button className="btn block primary" style={{ marginBottom: 12 }} onClick={() => setDrawing(true)}>
+            <PenTool size={18} /> Draw a custom stage shape
+          </button>
+        )}
         {tab === 'stage' && <StageGenerator />}
         {tab === 'stage' && <div className="section-title">Pieces</div>}
         {tab !== 'lights' && tab !== 'templates' && (
           <div className="grid-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))' }}>
             {OBJECT_DEFS.filter((d) => d.category === tab).map((d) => {
-              const I = ICONS[d.kind] ?? Box;
-              return (
-                <button key={d.kind} className="tile" onClick={() => addObject(d.kind)} data-tut={`add-${d.kind}`}>
-                  <I size={26} />
-                  <span className="t-label">{d.label}</span>
-                  <span className="t-hint">{d.hint}</span>
-                </button>
-              );
+              return <ObjectTile key={d.id} def={d} />;
             })}
           </div>
         )}
@@ -147,6 +216,8 @@ export function LibraryPanel() {
         )}
         {tab === 'templates' && (
           <>
+            <MyTemplates />
+            <div className="section-title">Built-in templates</div>
             <div className="hint" style={{ marginBottom: 12 }}>Replaces the current stage, lights and scenes. You can undo.</div>
             <div className="grid-2">
               {TEMPLATES.map((t) => (
@@ -164,6 +235,7 @@ export function LibraryPanel() {
           </>
         )}
       </div>
+      {drawing && <CustomShapeModal onClose={() => setDrawing(false)} />}
       {confirmT && (
         <Confirm
           text={`Replace your current design with the “${confirmT.name}” template? You can undo this.`}

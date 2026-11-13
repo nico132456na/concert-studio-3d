@@ -9,6 +9,7 @@ import { Projects } from './ui/screens/Projects';
 import { SettingsModal, StatsOverlay } from './ui/screens/SettingsModal';
 import { Editor } from './ui/editor/Editor';
 import { LiveMode } from './ui/live/LiveMode';
+import { PerformerMode } from './ui/performer/PerformerMode';
 import { Tutorial } from './ui/Tutorial';
 import { ErrorBoundary, Modal, Toasts } from './ui/components';
 import { useTimelinePlayer } from './ui/showControl';
@@ -61,6 +62,7 @@ export default function App() {
         {screen === 'projects' && <Projects />}
         {screen === 'editor' && <Editor />}
         {screen === 'live' && <LiveMode />}
+        {screen === 'performer' && <PerformerMode />}
       </ErrorBoundary>
       {screen === 'menu' && <Welcome />}
       <Tutorial />

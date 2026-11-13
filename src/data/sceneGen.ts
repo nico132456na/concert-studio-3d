@@ -99,12 +99,31 @@ export function buildAutoShow(fixtures: Fixture[], objects: StageObject[], palet
     screens: screenLooks(objects, () => vis('clouds', c1, '#000000', 0.35, 0.3)),
   };
 
-  const scenes = [intro, verse, chorus, outro];
+  const bridge: LightScene = {
+    id: uid('s'),
+    name: 'Bridge',
+    fade: 3,
+    atmosphere: { haze: 0.9, fog: 0.5 },
+    fixtures: fixtureLooks(fixtures, (f, i) => ({
+      on: f.type !== 'strobe' && f.type !== 'blinder',
+      color: i % 3 === 0 ? c3 : c2,
+      intensity: f.type === 'wash' ? 0.2 : 0.5,
+      movement: moving(f) ? 'random' : f.type === 'laser' ? 'fan' : 'none',
+      moveSpeed: 0.3,
+      moveSize: 30,
+      effect: f.type === 'ledbar' || f.type === 'pixel' ? 'fade' : 'none',
+      effectSpeed: 0.5,
+    })),
+    screens: screenLooks(objects, () => vis('space', c2, c1, 0.8, 0.5)),
+  };
+
+  const scenes = [intro, verse, chorus, bridge, outro];
   const cues: Cue[] = [
     { id: uid('c'), sceneId: intro.id, duration: 10, fade: 4 },
     { id: uid('c'), sceneId: verse.id, duration: 14, fade: 2.5 },
     { id: uid('c'), sceneId: chorus.id, duration: 14, fade: 0.4 },
     { id: uid('c'), sceneId: verse.id, duration: 12, fade: 2 },
+    { id: uid('c'), sceneId: bridge.id, duration: 12, fade: 3 },
     { id: uid('c'), sceneId: chorus.id, duration: 16, fade: 0.3 },
     { id: uid('c'), sceneId: outro.id, duration: 12, fade: 6 },
   ];

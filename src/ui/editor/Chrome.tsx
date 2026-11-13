@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import {
-  ArrowLeft, Undo2, Redo2, EyeOff, Radio, MousePointer2, Move, RotateCw, Scaling, Plus, Palette, Lightbulb, Video, Save, Layers, Shuffle, Settings,
+  ArrowLeft, Undo2, Redo2, EyeOff, Radio, MousePointer2, Move, RotateCw, Scaling, Plus, Palette, Lightbulb, Video, Save, Layers, Shuffle, Settings, Sun, PersonStanding,
 } from 'lucide-react';
 import { useUI, type CameraPresetId, type ViewMode } from '../../state/uiStore';
 import { useProject, edit } from '../../state/projectStore';
 import { useSave, saveNow } from '../../storage/autosave';
 import { useSettings } from '../../state/settingsStore';
 import { goHome, enterLive } from '../flow';
+import { enterPerformer } from '../../performer/flow';
 import { PromptModal, Toggle, Seg } from '../components';
 import { randomize } from './actions';
 
@@ -70,6 +71,9 @@ export function TopBar() {
             {v.label}
           </button>
         ))}
+        <button className="hide-md" onClick={() => { set({ view: 'persp' }); useUI.getState().requestCamera('performer'); }}>
+          Stage
+        </button>
       </div>
       <button className={`icon-btn hide-sm ${left === 'layers' ? 'active' : ''}`} onClick={() => set({ left: left === 'layers' ? null : 'layers' })} aria-label="Layers">
         <Layers size={21} />
@@ -77,6 +81,7 @@ export function TopBar() {
       <button className="icon-btn hide-md" onClick={randomize} aria-label="Randomize">
         <Shuffle size={21} />
       </button>
+      <EnvButton />
       <button className="btn small hide-md" onClick={() => update({ editorMode: mode === 'beginner' ? 'advanced' : 'beginner' })}>
         {mode === 'beginner' ? 'Beginner' : 'Advanced'}
       </button>
@@ -86,11 +91,26 @@ export function TopBar() {
       <button className="icon-btn" onClick={() => set({ hideUI: true })} aria-label="Hide panels">
         <EyeOff size={21} />
       </button>
+      <button className="btn small" onClick={enterPerformer} data-tut="perform" style={{ borderColor: '#4da3ff' }}>
+        <PersonStanding size={18} /> PERFORM
+      </button>
       <button className="btn live small" onClick={enterLive} data-tut="live">
         <Radio size={18} /> LIVE
       </button>
       {renaming && <PromptModal title="Rename project" initial={name} onClose={() => setRenaming(false)} onDone={(v) => { edit.rename(v); setRenaming(false); }} />}
     </div>
+  );
+}
+
+const ENV_LABEL = { construction: 'Work lights', preview: 'Preview', concert: 'Concert', cinematic: 'Cinematic' } as const;
+function EnvButton() {
+  const env = useUI((s) => s.lightEnv);
+  const set = useUI((s) => s.set);
+  const order = ['construction', 'preview', 'concert', 'cinematic'] as const;
+  return (
+    <button className="btn small hide-sm" onClick={() => set({ lightEnv: order[(order.indexOf(env) + 1) % order.length] })} aria-label="Lighting environment">
+      <Sun size={16} /> {ENV_LABEL[env]}
+    </button>
   );
 }
 
@@ -174,8 +194,22 @@ export function CameraMenu() {
           ))}
         </div>
         <div className="hint" style={{ margin: '12px 0' }}>Free camera: one finger rotates, two fingers pan, pinch zooms. Double-tap an object to focus on it.</div>
+        <div className="field">
+          <div className="field-label">Lighting environment</div>
+          <Seg
+            value={ui.lightEnv}
+            onChange={(v) => set({ lightEnv: v })}
+            options={[
+              { v: 'construction', label: 'Work' },
+              { v: 'preview', label: 'Preview' },
+              { v: 'concert', label: 'Concert' },
+              { v: 'cinematic', label: 'Cinematic' },
+            ]}
+          />
+        </div>
         <Toggle label="Show grid" value={ui.showGrid} onChange={(v) => set({ showGrid: v })} />
         <Toggle label="Show crowd while editing" value={ui.showCrowd} onChange={(v) => set({ showCrowd: v })} />
+        <Toggle label="Show speaker coverage" value={ui.showCoverage} onChange={(v) => set({ showCoverage: v })} />
         <Toggle label="Snap to grid" value={ui.snapGrid} onChange={(v) => set({ snapGrid: v })} />
         <Toggle label="Snap to objects & guides" value={ui.snapObjects} onChange={(v) => set({ snapObjects: v })} />
         <div className="field" style={{ marginTop: 8 }}>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Modal, Seg, Slider, Toggle } from '../components';
-import { useSettings, type Graphics } from '../../state/settingsStore';
+import { useSettings, QUALITY, type Graphics } from '../../state/settingsStore';
 import { useUI } from '../../state/uiStore';
 import { perf } from '../../three/Viewport';
 import { storageInfo } from '../../storage/db';
@@ -24,13 +24,14 @@ export function SettingsModal() {
         onChange={(g) => s.update({ graphics: g })}
         options={[
           { v: 'auto', label: 'Auto' },
-          { v: 'low', label: 'Low' },
-          { v: 'medium', label: 'Medium' },
+          { v: 'low', label: 'Performance' },
+          { v: 'medium', label: 'Balanced' },
           { v: 'high', label: 'High' },
+          { v: 'ultra', label: 'Ultra' },
         ]}
       />
       <div className="hint" style={{ marginTop: 8 }}>
-        Now using <b style={{ color: '#fff' }}>{s.effective}</b>. Auto lowers quality if the frame rate drops. High adds shadows and more real lights.
+        Now using <b style={{ color: '#fff' }}>{QUALITY[s.effective].label}</b>. Auto lowers quality if the frame rate drops. High adds ambient occlusion, shadows and more real lights; Ultra doubles the crowd and lights.
       </div>
       <Toggle label="Show performance monitor" value={s.showStats} onChange={(v) => s.update({ showStats: v })} />
       <div className="hint">

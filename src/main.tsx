@@ -10,9 +10,9 @@ createRoot(document.getElementById('root')!).render(<App />);
 
 // Test hooks (development only)
 if (import.meta.env.DEV) {
-  Promise.all([import('./three/Viewport'), import('./state/uiStore'), import('./state/projectStore'), import('./state/showStore'), import('./state/settingsStore'), import('./three/interaction'), import('three')]).then(([v, u, p, s, st, it, THREE]) => {
+  Promise.all([import('./three/Viewport'), import('./state/uiStore'), import('./state/projectStore'), import('./state/showStore'), import('./state/settingsStore'), import('./three/interaction'), import('three'), import('./ui/editor/actions'), import('./data/library'), import('./performer/state')]).then(([v, u, p, s, st, it, THREE, act, lib, perf]) => {
     (window as any).__cs = {
-      perf: v.perf, ui: u.useUI, project: p.useProject, show: s.useShow, settings: st.useSettings,
+      perf: v.perf, performer: perf, actions: act, library: lib, ui: u.useUI, project: p.useProject, show: s.useShow, settings: st.useSettings,
       /** world → client pixel coordinates using the active camera */
       toScreen: (x: number, y: number, z: number) => {
         const cam = it.ctx.camera, dom = it.ctx.dom;

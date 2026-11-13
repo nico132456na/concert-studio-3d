@@ -44,7 +44,7 @@ export function Audience({ arena, count }: Props) {
     [objects],
   );
 
-  const { mesh, uniforms } = useMemo(() => {
+  const { mesh, uniforms, phones } = useMemo(() => {
     const build = getArenaBuild(arena);
     const r = rng(1234);
     const footprints = (objects ?? [])
@@ -124,7 +124,22 @@ export function Audience({ arena, count }: Props) {
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.frustumCulled = false;
     mesh.raycast = () => {};
-    return { mesh, uniforms };
+    // phone lights held up by ~35% of the crowd
+    const pp: number[] = [];
+    const v = new THREE.Vector3();
+    for (let i = 0; i < n; i++) {
+      if (r2() > 0.35) continue;
+      v.setFromMatrixPosition(mats[i]);
+      pp.push(v.x + (r2() - 0.5) * 0.3, v.y + 1.95 + r2() * 0.3, v.z + (r2() - 0.5) * 0.3);
+    }
+    const pg = new THREE.BufferGeometry();
+    pg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3));
+    const pm = new THREE.PointsMaterial({ color: '#dfe8ff', size: 0.22, sizeAttenuation: true, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+    const phones = new THREE.Points(pg, pm);
+    phones.frustumCulled = false;
+    phones.raycast = () => {};
+    phones.visible = false;
+    return { mesh, uniforms, phones };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arena, count, footKey]);
 
@@ -133,17 +148,26 @@ export function Audience({ arena, count }: Props) {
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();
       mesh.dispose();
+      phones.geometry.dispose();
+      (phones.material as THREE.Material).dispose();
     },
-    [mesh],
+    [mesh, phones],
   );
 
   useFrame((state, dt) => {
     const show = useShow.getState();
     uniforms.uTime.value = state.clock.elapsedTime;
-    const target = show.playing ? 1 : show.override ? 0.6 : 0.15;
+    const target = Math.max(show.playing ? 1 : show.override ? 0.6 : 0.15, show.hype * 1.1);
     uniforms.uEnergy.value += (target * (1 - engine.blackout * 0.7) - uniforms.uEnergy.value) * Math.min(1, dt * 2);
     uniforms.uBeat.value = engine.beat;
+    phones.visible = show.phoneLights;
+    if (show.phoneLights) (phones.material as THREE.PointsMaterial).opacity = 0.55 + 0.35 * Math.sin(state.clock.elapsedTime * 1.7);
   });
 
-  return <primitive object={mesh} />;
+  return (
+    <>
+      <primitive object={mesh} />
+      <primitive object={phones} />
+    </>
+  );
 }

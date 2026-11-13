@@ -25,6 +25,9 @@ export const VISUALS: VisualDef[] = [
   { id: 'skyline', label: 'Night City', group: 'Scenic', mode: 14 },
   { id: 'eclipse', label: 'Eclipse', group: 'Scenic', mode: 15 },
   { id: 'clouds', label: 'Clouds', group: 'Nature', mode: 16 },
+  { id: 'earth', label: 'Earth Globe', group: 'Scenic', mode: 19 },
+  { id: 'space', label: 'Deep Space', group: 'Scenic', mode: 20 },
+  { id: 'stained', label: 'Stained Glass', group: 'Geometric', mode: 21 },
   { id: 'text', label: 'Typography', group: 'Content', mode: 17 },
   { id: 'media', label: 'My Image / Video', group: 'Content', mode: 18 },
 ];
@@ -52,6 +55,9 @@ export const VISUAL_PRESETS: VisualPreset[] = [
   { name: 'Golden Hour', visual: 'gradient', color1: '#ff7a1a', color2: '#5a1a6e', brightness: 1, speed: 0.4 },
   { name: 'Liquid Chrome', visual: 'noise', color1: '#d9d9d9', color2: '#202226', brightness: 1, speed: 0.7 },
   { name: 'Crystal Shapes', visual: 'geometric', color1: '#ffffff', color2: '#2a7bff', brightness: 1, speed: 1 },
+  { name: 'Planet Earth', visual: 'earth', color1: '#2a7bff', color2: '#ffc21a', brightness: 1, speed: 1 },
+  { name: 'Nebula', visual: 'space', color1: '#8a2aff', color2: '#ff2ad4', brightness: 1, speed: 1 },
+  { name: 'Cathedral', visual: 'stained', color1: '#ff2a4a', color2: '#2a7bff', brightness: 1, speed: 0.5 },
   { name: 'Blackout', visual: 'off', color1: '#000000', color2: '#000000', brightness: 0, speed: 1 },
 ];
 

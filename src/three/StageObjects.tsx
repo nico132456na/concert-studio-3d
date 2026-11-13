@@ -24,13 +24,22 @@ interface Props {
 }
 
 function LedSurface({ obj, geometry, side }: { obj: StageObject; geometry: THREE.BufferGeometry; side?: THREE.Side }) {
-  const mat = useMemo(() => createLedMaterial(side ?? THREE.FrontSide), [side]);
+  const twoSided = obj.kind === 'ledTunnel' || obj.kind === 'ledArch' || obj.kind === 'ledTransparent';
+  const mat = useMemo(() => {
+    const m = createLedMaterial(side ?? (twoSided ? THREE.DoubleSide : THREE.FrontSide));
+    if (obj.kind === 'ledTransparent') {
+      m.transparent = true;
+      m.blending = THREE.AdditiveBlending;
+      m.depthWrite = false;
+    }
+    return m;
+  }, [side, twoSided, obj.kind]);
   useEffect(() => () => mat.dispose(), [mat]);
   const led = obj.led!;
   const media = useMediaTexture(led.visual === 'media' ? led.mediaId : undefined, led.mediaType);
   const text = useMemo(() => (led.visual === 'text' ? textTexture(led.text || ' ') : null), [led.visual, led.text]);
   const [w, h, d] = obj.size;
-  const aspect = obj.kind === 'ledFloor' ? w / Math.max(0.01, d) : obj.kind === 'ledCurved' ? (w * 1.2) / Math.max(0.01, h) : obj.kind === 'ledCircle' ? 1 : w / Math.max(0.01, h);
+  const aspect = obj.kind === 'ledSphere' || obj.kind === 'ledCylinder' ? 2 : obj.kind === 'ledCeiling' ? w / Math.max(0.01, d) : obj.kind === 'ledTunnel' || obj.kind === 'ledArch' ? (w * 1.57) / Math.max(0.01, d) : obj.kind === 'ledFloor' ? w / Math.max(0.01, d) : obj.kind === 'ledCurved' ? (w * 1.2) / Math.max(0.01, h) : obj.kind === 'ledCircle' ? 1 : w / Math.max(0.01, h);
 
   useFrame((state, dt) => {
     const out = screenOutput(obj, Math.min(dt, 0.1));
@@ -89,11 +98,21 @@ function Extras({ obj }: { obj: StageObject }) {
 }
 
 export const StageObjectMesh = memo(function StageObjectMesh({ obj, selected, interactive, showLabel, shadows }: Props) {
-  const geo = getGeometry(obj.kind, obj.size);
+  const geo = getGeometry(obj.kind, obj.size, obj.outline);
   const whole = ledWholeSurface(obj.kind) || obj.material.preset === 'led';
   const material = useMemo(() => buildMaterial(obj.material, obj.size, geo.mainBack ? THREE.BackSide : THREE.FrontSide), [obj.material, geo.mainBack, Math.round(obj.size[0]), Math.round(obj.size[1]), Math.round(obj.size[2])]);
   useEffect(() => () => disposeMaterial(material), [material]);
   const group = useRef<THREE.Group>(null);
+  const moving = useRef<THREE.Group>(null);
+  // animated platforms: turntables, lifts and bobbing flown pieces
+  useFrame((state) => {
+    const g = moving.current;
+    if (!g) return;
+    const t = state.clock.elapsedTime * (obj.motionSpeed ?? 1);
+    const m = obj.motion ?? 'none';
+    g.rotation.y = m === 'rotate' ? t * 0.35 : 0;
+    g.position.y = m === 'lift' ? (0.5 - 0.5 * Math.cos(t * 0.6)) * Math.max(1.5, obj.size[1] * 1.5) : m === 'bob' ? Math.sin(t * 0.8) * 0.6 : 0;
+  });
 
   const scale: [number, number, number] = [Math.max(0.01, obj.size[0]), Math.max(0.01, obj.size[1]), Math.max(0.01, obj.size[2])];
   const isGlass = obj.material.opacity < 0.999;
@@ -106,6 +125,7 @@ export const StageObjectMesh = memo(function StageObjectMesh({ obj, selected, in
       onClick={interactive ? (e) => handleItemClick(e, obj.id) : undefined}
       onPointerDown={interactive ? (e) => handleItemPointerDown(e, obj.id) : undefined}
     >
+      <group ref={moving}>
       <group scale={scale}>
         {whole && obj.led ? (
           <LedSurface obj={obj} geometry={geo.main} />
@@ -118,6 +138,7 @@ export const StageObjectMesh = memo(function StageObjectMesh({ obj, selected, in
             <lineBasicMaterial color={obj.locked ? '#ff9a3c' : '#4da3ff'} depthTest={false} transparent opacity={0.95} />
           </lineSegments>
         )}
+      </group>
       </group>
       <Extras obj={obj} />
       {selected && showLabel && (

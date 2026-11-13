@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Vec3 } from '../types';
 
-export type Screen = 'menu' | 'arenas' | 'gallery' | 'projects' | 'editor' | 'live';
+export type Screen = 'menu' | 'arenas' | 'gallery' | 'projects' | 'editor' | 'live' | 'performer';
 export type Tool = 'select' | 'move' | 'rotate' | 'scale';
 export type LeftPanel = 'add' | 'layers' | null;
 export type RightTab = 'object' | 'material' | 'led' | 'light';
@@ -35,12 +35,14 @@ interface UIState {
   camRequest: { id: CameraPresetId; n: number; focus?: Vec3; radius?: number } | null;
   toasts: Toast[];
   /** counters used by the tutorial */
-  stats: { moves: number; materials: number; camera: number; saves: number; stage: number; led: number; light: number };
+  stats: { moves: number; materials: number; camera: number; saves: number; stage: number; led: number; light: number; audio: number; perform: number };
   tutorialStep: number | null;
   guides: { x?: number; z?: number } | null;
   dragging: boolean;
   settingsOpen: boolean;
   layersOpen: boolean;
+  showCoverage: boolean;
+  lightEnv: 'construction' | 'preview' | 'concert' | 'cinematic';
   set: (p: Partial<UIState>) => void;
   select: (ids: string[], additive?: boolean) => void;
   toast: (text: string, kind?: Toast['kind']) => void;
@@ -69,12 +71,14 @@ export const useUI = create<UIState>((set, get) => ({
   showCrowd: false,
   camRequest: null,
   toasts: [],
-  stats: { moves: 0, materials: 0, camera: 0, saves: 0, stage: 0, led: 0, light: 0 },
+  stats: { moves: 0, materials: 0, camera: 0, saves: 0, stage: 0, led: 0, light: 0, audio: 0, perform: 0 },
   tutorialStep: null,
   guides: null,
   dragging: false,
   settingsOpen: false,
   layersOpen: false,
+  showCoverage: false,
+  lightEnv: 'construction',
   set: (p) => set(p),
   select: (ids, additive) => {
     if (additive) {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, N8AO, SMAA, DepthOfField } from '@react-three/postprocessing';
 import { engine, outputs } from './lightingEngine';
 import { glowTexture, smokeTexture } from './textures';
 import { useShow } from '../state/showStore';
@@ -196,12 +196,17 @@ export function StageFx() {
   );
 }
 
-export function PostFX({ enabled }: { enabled: boolean }) {
-  if (!enabled) return null;
+export function PostFX({ bloom, ao, smaa, cinematic, ultra }: { bloom: boolean; ao: boolean; smaa: boolean; cinematic: boolean; ultra: boolean }) {
+  if (!bloom && !ao && !smaa && !cinematic) return null;
+  const fx: JSX.Element[] = [];
+  if (ao) fx.push(<N8AO key="ao" halfRes={!ultra} quality={ultra ? 'medium' : 'performance'} aoRadius={2.5} intensity={2.2} distanceFalloff={1} />);
+  if (bloom) fx.push(<Bloom key="bloom" mipmapBlur intensity={cinematic ? 1.2 : 0.9} luminanceThreshold={0.75} luminanceSmoothing={0.2} radius={0.7} />);
+  if (cinematic) fx.push(<DepthOfField key="dof" focusDistance={0.015} focalLength={0.06} bokehScale={3} />);
+  if (smaa) fx.push(<SMAA key="smaa" />);
+  fx.push(<Vignette key="vig" eskil={false} offset={0.25} darkness={cinematic ? 0.8 : 0.5} />);
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
-      <Bloom mipmapBlur intensity={0.9} luminanceThreshold={0.75} luminanceSmoothing={0.2} radius={0.7} />
-      <Vignette eskil={false} offset={0.25} darkness={0.55} />
+      {fx}
     </EffectComposer>
   );
 }

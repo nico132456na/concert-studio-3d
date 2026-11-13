@@ -22,7 +22,7 @@ export interface NamedMaterial extends MaterialSpec {
 
 export type VisualId =
   | 'off' | 'solid' | 'gradient' | 'plasma' | 'geometric' | 'grid' | 'particles' | 'fire' | 'water'
-  | 'bars' | 'minimal' | 'noise' | 'tunnel' | 'checker' | 'skyline' | 'eclipse' | 'clouds' | 'text' | 'media';
+  | 'bars' | 'minimal' | 'noise' | 'tunnel' | 'checker' | 'skyline' | 'eclipse' | 'clouds' | 'text' | 'media' | 'earth' | 'space' | 'stained';
 
 export interface LedSpec {
   visual: VisualId;
@@ -42,7 +42,45 @@ export type ObjectKind =
   | 'ledWall' | 'ledVertical' | 'ledHorizontal' | 'ledCircle' | 'ledHanging' | 'ledPillar' | 'ledFloor' | 'ledCurved'
   | 'truss' | 'trussTower' | 'beam' | 'lightTower' | 'frame' | 'arch' | 'scaffold'
   | 'curtain' | 'glassPanel' | 'fabric'
-  | 'sphere' | 'ring' | 'pyramid' | 'column' | 'cube' | 'cylinder' | 'cone' | 'wedge' | 'torus' | 'monolith';
+  | 'sphere' | 'ring' | 'pyramid' | 'column' | 'cube' | 'cylinder' | 'cone' | 'wedge' | 'torus' | 'monolith'
+  // extended stage shapes
+  | 'ovalPlatform' | 'semicircle' | 'trianglePlatform' | 'octagon' | 'diamond' | 'crossStage' | 'tStage' | 'uStage' | 'lStage' | 'hStage'
+  | 'ringStage' | 'curvedRunway' | 'spiralRunway' | 'waveStage' | 'halfSphere' | 'mountain' | 'rotatingPlatform' | 'lift' | 'custom'
+  // structures & rigging
+  | 'circleTruss' | 'curvedTruss' | 'triangleTruss' | 'trussGrid' | 'cubeFrame' | 'geoDome' | 'geoFrame' | 'sculpture' | 'tree' | 'rock'
+  | 'ribbedWall' | 'railing'
+  // LED
+  | 'ledSphere' | 'ledCylinder' | 'ledCube' | 'ledTunnel' | 'ledArch' | 'ledCeiling' | 'ledTransparent'
+  // audio
+  | 'lineArray' | 'subwoofer' | 'groundStack' | 'speakerCab' | 'wedgeMonitor' | 'speakerTower' | 'delayTower';
+
+export type MotionKind = 'none' | 'rotate' | 'lift' | 'bob';
+
+export type HairStyle = 'short' | 'long' | 'buzz' | 'curly' | 'braids' | 'bald' | 'bun';
+export type TopStyle = 'tee' | 'hoodie' | 'jacket' | 'tank' | 'suit' | 'jersey';
+export type BottomStyle = 'jeans' | 'cargo' | 'shorts' | 'skirt' | 'suit';
+
+export interface AvatarLook {
+  skin: string;
+  hair: HairStyle;
+  hairColor: string;
+  top: TopStyle;
+  topColor: string;
+  bottom: BottomStyle;
+  bottomColor: string;
+  shoes: string;
+  glasses: boolean;
+  chain: boolean;
+  cap: boolean;
+  gloves: boolean;
+  height: number; // scale 0.9..1.1
+}
+
+export interface PerformerData {
+  name: string;
+  look: AvatarLook;
+  outfits: { id: string; name: string; look: AvatarLook }[];
+}
 
 export interface StageObject {
   id: string;
@@ -61,6 +99,11 @@ export interface StageObject {
   groupId?: string;
   /** tag for generated main-stage parts */
   tag?: string;
+  /** outline for custom extruded shapes, in unit space (-0.5..0.5) on X/Z */
+  outline?: [number, number][];
+  /** animated platforms */
+  motion?: MotionKind;
+  motionSpeed?: number;
 }
 
 export type FixtureType =
@@ -167,6 +210,7 @@ export interface Project {
   customMaterials: NamedMaterial[];
   customPresets: LightPreset[];
   savedColors: string[];
+  performer?: PerformerData;
 }
 
 export interface ProjectMeta {

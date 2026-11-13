@@ -89,7 +89,9 @@ function curvedScreen(seg = 40, T = Math.PI / 3) {
   return g;
 }
 
-function build(kind: ObjectKind, variant: number): KindGeometry {
+function build(kind: ObjectKind, variant: number, outline?: [number, number][]): KindGeometry {
+  const ext = buildExtended(kind, outline);
+  if (ext) return ext;
   switch (kind) {
     case 'platform':
     case 'runway':
@@ -201,24 +203,321 @@ function build(kind: ObjectKind, variant: number): KindGeometry {
   }
 }
 
+
+/* ---------- extended shape helpers ---------- */
+
+/** Normalize any geometry into the unit box (x,z ∈ [-0.5,0.5], y ∈ [0,1]). */
+function normalize(g: THREE.BufferGeometry) {
+  g.computeBoundingBox();
+  const b = g.boundingBox!;
+  const sx = b.max.x - b.min.x || 1, sy = b.max.y - b.min.y || 1, sz = b.max.z - b.min.z || 1;
+  g.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
+  g.scale(1 / sx, 1 / sy, 1 / sz);
+  g.computeVertexNormals();
+  g.computeBoundingBox();
+  g.computeBoundingSphere();
+  return g;
+}
+
+/** Extrude a 2D outline (x, z in plan) upward into a deck. */
+function extrudePlan(shape: THREE.Shape, segs = 48) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false, curveSegments: segs });
+  g.rotateX(-Math.PI / 2); // shape XY → plan XZ (shape y becomes -z), extrusion → +y
+  return normalize(g);
+}
+
+function poly(points: [number, number][]) {
+  const s = new THREE.Shape();
+  points.forEach(([x, y], i) => (i ? s.lineTo(x, y) : s.moveTo(x, y)));
+  s.closePath();
+  return s;
+}
+
+function arcBand(r0: number, r1: number, a0: number, a1: number) {
+  const s = new THREE.Shape();
+  s.absarc(0, 0, r1, a0, a1, false);
+  s.absarc(0, 0, r0, a1, a0, true);
+  s.closePath();
+  return s;
+}
+
+function jitter(g: THREE.BufferGeometry, amt: number, seed: number) {
+  const pos = g.getAttribute('position') as THREE.BufferAttribute;
+  const map = new Map<string, [number, number, number]>();
+  let k = seed;
+  const rnd = () => ((k = (k * 16807) % 2147483647) / 2147483647) - 0.5;
+  for (let i = 0; i < pos.count; i++) {
+    const key = `${pos.getX(i).toFixed(3)},${pos.getY(i).toFixed(3)},${pos.getZ(i).toFixed(3)}`;
+    if (!map.has(key)) map.set(key, [rnd() * amt, rnd() * amt * 0.6, rnd() * amt]);
+    const d = map.get(key)!;
+    if (pos.getY(i) > 0.02) pos.setXYZ(i, pos.getX(i) + d[0], pos.getY(i) + d[1], pos.getZ(i) + d[2]);
+  }
+  return g;
+}
+
+/** Bars along the edges of a geometry (lattice look). */
+function latticeOf(g: THREE.BufferGeometry, t: number, filter?: (a: THREE.Vector3, b: THREE.Vector3) => boolean) {
+  const e = new THREE.EdgesGeometry(g, 1);
+  const p = e.getAttribute('position');
+  const parts: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < p.count; i += 2) {
+    const a = new THREE.Vector3(p.getX(i), p.getY(i), p.getZ(i));
+    const b = new THREE.Vector3(p.getX(i + 1), p.getY(i + 1), p.getZ(i + 1));
+    if (filter && !filter(a, b)) continue;
+    if (a.distanceTo(b) < 1e-4) continue;
+    parts.push(bar(a, b, t));
+  }
+  return merge(parts);
+}
+
+function ringTruss(arc = Math.PI * 2, n = 40) {
+  const parts: THREE.BufferGeometry[] = [];
+  const t = 0.012;
+  const R = [0.5, 0.44];
+  const Y = [0.05, 0.95];
+  const pt = (r: number, a: number, y: number) => new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r);
+  for (let i = 0; i < n; i++) {
+    const a0 = (i / n) * arc, a1 = ((i + 1) / n) * arc;
+    for (const r of R) for (const y of Y) parts.push(bar(pt(r, a0, y), pt(r, a1, y), t * 1.6));
+    parts.push(bar(pt(R[0], a0, Y[0]), pt(R[0], a1, Y[1]), t));
+    parts.push(bar(pt(R[1], a0, Y[1]), pt(R[1], a1, Y[0]), t));
+    parts.push(bar(pt(R[0], a0, Y[0]), pt(R[1], a0, Y[0]), t));
+    parts.push(bar(pt(R[0], a0, Y[1]), pt(R[1], a0, Y[1]), t));
+  }
+  return normalize(merge(parts));
+}
+
+function speakerBox(w: number, h: number, d: number, x: number, y: number, z: number, cones: number, tilt = 0) {
+  const parts: THREE.BufferGeometry[] = [box(w, h, d, 0, 0, 0)];
+  for (let i = 0; i < cones; i++) {
+    const cx = cones === 1 ? 0 : (i / (cones - 1) - 0.5) * w * 0.5;
+    const r = Math.min(w / (cones + 0.6), h) * 0.38;
+    parts.push(new THREE.CylinderGeometry(r, r * 0.7, 0.04, 16).rotateX(Math.PI / 2).translate(cx, 0, d / 2 + 0.01));
+  }
+  const g = merge(parts);
+  if (tilt) g.rotateX(tilt);
+  g.translate(x, y, z);
+  return g;
+}
+
+/** Simple outline smoothing for custom stages (Chaikin). */
+export function smoothOutline(pts: [number, number][], iterations = 2): [number, number][] {
+  let p = pts;
+  for (let k = 0; k < iterations; k++) {
+    const out: [number, number][] = [];
+    for (let i = 0; i < p.length; i++) {
+      const a = p[i], b = p[(i + 1) % p.length];
+      out.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    p = out;
+  }
+  return p;
+}
+
+function buildExtended(kind: ObjectKind, outline?: [number, number][]): KindGeometry | null {
+  switch (kind) {
+    case 'ovalPlatform':
+    case 'ledCylinder':
+      return { main: new THREE.CylinderGeometry(0.5, 0.5, 1, 56).translate(0, 0.5, 0) };
+    case 'octagon':
+      return { main: new THREE.CylinderGeometry(0.5, 0.5, 1, 8).rotateY(Math.PI / 8).translate(0, 0.5, 0) };
+    case 'semicircle': {
+      const s = new THREE.Shape();
+      s.moveTo(-1, 0);
+      s.absarc(0, 0, 1, Math.PI, 0, false);
+      s.lineTo(-1, 0);
+      return { main: extrudePlan(s) };
+    }
+    case 'trianglePlatform':
+      return { main: extrudePlan(poly([[-0.5, 0.5], [0.5, 0.5], [0, -0.5]])) };
+    case 'diamond':
+      return { main: extrudePlan(poly([[0, 0.5], [0.5, 0], [0, -0.5], [-0.5, 0]])) };
+    case 'crossStage': {
+      const a = 0.16;
+      return { main: extrudePlan(poly([[-a, 0.5], [a, 0.5], [a, a], [0.5, a], [0.5, -a], [a, -a], [a, -0.5], [-a, -0.5], [-a, -a], [-0.5, -a], [-0.5, a], [-a, a]])) };
+    }
+    case 'tStage': // wide bar at the back (shape y up = -z back), runway toward +z
+      return { main: extrudePlan(poly([[-0.5, 0.5], [0.5, 0.5], [0.5, 0.15], [0.1, 0.15], [0.1, -0.5], [-0.1, -0.5], [-0.1, 0.15], [-0.5, 0.15]])) };
+    case 'uStage':
+      return { main: extrudePlan(poly([[-0.5, 0.5], [0.5, 0.5], [0.5, -0.5], [0.25, -0.5], [0.25, 0.2], [-0.25, 0.2], [-0.25, -0.5], [-0.5, -0.5]])) };
+    case 'lStage':
+      return { main: extrudePlan(poly([[-0.5, 0.5], [0.5, 0.5], [0.5, 0.15], [-0.15, 0.15], [-0.15, -0.5], [-0.5, -0.5]])) };
+    case 'hStage':
+      return { main: extrudePlan(poly([[-0.5, 0.5], [-0.22, 0.5], [-0.22, 0.1], [0.22, 0.1], [0.22, 0.5], [0.5, 0.5], [0.5, -0.5], [0.22, -0.5], [0.22, -0.1], [-0.22, -0.1], [-0.22, -0.5], [-0.5, -0.5]])) };
+    case 'ringStage': {
+      const s = new THREE.Shape();
+      s.absarc(0, 0, 1, 0, Math.PI * 2, false);
+      const h = new THREE.Path();
+      h.absarc(0, 0, 0.72, 0, Math.PI * 2, true);
+      s.holes.push(h);
+      return { main: extrudePlan(s, 64) };
+    }
+    case 'curvedRunway':
+      return { main: extrudePlan(arcBand(0.82, 1, -Math.PI / 2, 0), 40) };
+    case 'spiralRunway': {
+      const parts: THREE.BufferGeometry[] = [];
+      const n = 48;
+      for (let i = 0; i < n; i++) {
+        const t = i / n;
+        const a = t * Math.PI * 3;
+        const r = 0.42 - t * 0.12;
+        const seg = new THREE.BoxGeometry(0.16, 0.05, ((Math.PI * 3 * r) / n) * 1.25);
+        seg.rotateY(-a);
+        seg.translate(Math.cos(a) * r, t * 0.95 + 0.025, Math.sin(a) * r);
+        parts.push(seg);
+      }
+      parts.push(new THREE.CylinderGeometry(0.06, 0.06, 1, 12).translate(0, 0.5, 0));
+      return { main: normalize(merge(parts)) };
+    }
+    case 'waveStage': {
+      const s = new THREE.Shape();
+      s.moveTo(-0.5, 0);
+      for (let i = 0; i <= 40; i++) {
+        const x = -0.5 + i / 40;
+        s.lineTo(x, 0.7 + Math.sin(i / 40 * Math.PI * 3) * 0.3);
+      }
+      s.lineTo(0.5, 0);
+      s.closePath();
+      const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 4 }).translate(0, 0, -0.5);
+      return { main: normalize(g) };
+    }
+    case 'halfSphere':
+      return { main: normalize(new THREE.SphereGeometry(0.5, 48, 20, 0, Math.PI * 2, 0, Math.PI / 2)) };
+    case 'mountain':
+      return { main: normalize(jitter(new THREE.ConeGeometry(0.5, 1, 9, 4).toNonIndexed(), 0.16, 7)) };
+    case 'rotatingPlatform':
+    case 'lift':
+      return { main: new THREE.CylinderGeometry(0.5, 0.5, 1, kind === 'lift' ? 4 : 48).rotateY(kind === 'lift' ? Math.PI / 4 : 0).scale(kind === 'lift' ? Math.SQRT2 : 1, 1, kind === 'lift' ? Math.SQRT2 : 1).translate(0, 0.5, 0) };
+    case 'custom': {
+      const pts = outline && outline.length >= 3 ? outline : ([[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] as [number, number][]);
+      return { main: extrudePlan(poly(pts.map(([x, z]) => [x, -z] as [number, number])), 12) };
+    }
+    case 'circleTruss':
+      return { main: ringTruss() };
+    case 'curvedTruss':
+      return { main: ringTruss(Math.PI * 0.6, 16) };
+    case 'triangleTruss': {
+      const parts: THREE.BufferGeometry[] = [];
+      const t = 0.09;
+      const c: [number, number][] = [[0.05, -0.45], [0.05, 0.45], [0.95, 0]];
+      for (const [y, z] of c) parts.push(box(1, t, t, 0, y, z));
+      const n = 14;
+      for (let i = 0; i < n; i++) {
+        const x0 = -0.5 + i / n, x1 = -0.5 + (i + 1) / n;
+        for (let f = 0; f < 3; f++) {
+          const p = c[f], q = c[(f + 1) % 3];
+          parts.push(bar(new THREE.Vector3(x0, p[0], p[1]), new THREE.Vector3(x1, q[0], q[1]), t * 0.5));
+        }
+      }
+      return { main: merge(parts) };
+    }
+    case 'trussGrid': {
+      const parts: THREE.BufferGeometry[] = [];
+      for (let i = 0; i <= 5; i++) {
+        parts.push(box(1, 0.5, 0.02, 0, 0.5, -0.5 + i / 5));
+        parts.push(box(0.02, 0.5, 1, -0.5 + i / 5, 0.5, 0));
+      }
+      return { main: merge(parts) };
+    }
+    case 'cubeFrame':
+      return { main: latticeOf(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), 0.04) };
+    case 'geoDome': {
+      const ico = new THREE.IcosahedronGeometry(0.5, 2).translate(0, 0, 0);
+      const g = latticeOf(ico, 0.012, (a, b) => a.y > -0.01 && b.y > -0.01);
+      return { main: normalize(g) };
+    }
+    case 'geoFrame':
+      return { main: normalize(latticeOf(new THREE.IcosahedronGeometry(0.5, 1), 0.015)) };
+    case 'sculpture':
+      return { main: normalize(new THREE.TorusKnotGeometry(0.35, 0.1, 160, 16, 2, 3)) };
+    case 'tree': {
+      const parts = [new THREE.CylinderGeometry(0.05, 0.08, 0.35, 8).translate(0, 0.175, 0)];
+      [0.3, 0.5, 0.68].forEach((y, i) => parts.push(new THREE.ConeGeometry(0.5 - i * 0.12, 0.42, 9).translate(0, y + 0.2, 0)));
+      return { main: normalize(merge(parts)) };
+    }
+    case 'rock':
+      return { main: normalize(jitter(new THREE.IcosahedronGeometry(0.5, 1).toNonIndexed(), 0.25, 31)) };
+    case 'ribbedWall': {
+      const parts = [box(1, 1, 0.2, 0, 0.5, -0.4)];
+      for (let i = 0; i < 16; i++) parts.push(box(0.025, 1, 0.8, -0.48 + i * 0.064, 0.5, 0.05));
+      return { main: merge(parts) };
+    }
+    case 'railing': {
+      const parts = [box(1, 0.06, 1, 0, 0.97, 0), box(1, 0.04, 0.6, 0, 0.5, 0)];
+      for (let i = 0; i <= 6; i++) parts.push(box(0.012, 1, 0.8, -0.5 + i / 6, 0.5, 0));
+      return { main: merge(parts) };
+    }
+    case 'ledSphere':
+      return { main: new THREE.SphereGeometry(0.5, 64, 40).translate(0, 0.5, 0) };
+    case 'ledCube':
+    case 'ledCeiling':
+      return { main: box(1, 1, 1, 0, 0.5, 0) };
+    case 'ledTunnel': {
+      const g = new THREE.CylinderGeometry(0.5, 0.5, 1, 40, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2);
+      return { main: normalize(g), mainBack: false };
+    }
+    case 'ledArch': {
+      const g = new THREE.CylinderGeometry(0.5, 0.5, 1, 48, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2);
+      return { main: normalize(g) };
+    }
+    case 'ledTransparent':
+      return { main: new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0) };
+    case 'lineArray': {
+      const parts: THREE.BufferGeometry[] = [box(1, 0.04, 1, 0, 0.98, 0)];
+      const n = 12;
+      let y = 0.94;
+      for (let i = 0; i < n; i++) {
+        const tilt = (i / n) ** 2 * 0.5;
+        parts.push(speakerBox(1, 1 / n - 0.006, 0.85, 0, y - 0.5 / n, -tilt * 0.3, 2, tilt));
+        y -= 1 / n;
+      }
+      return { main: normalize(merge(parts)) };
+    }
+    case 'subwoofer':
+      return { main: normalize(speakerBox(1, 1, 1, 0, 0.5, 0, 2)) };
+    case 'groundStack': {
+      const parts = [speakerBox(1, 0.3, 0.9, 0, 0.15, 0, 2), speakerBox(1, 0.3, 0.9, 0, 0.45, 0, 2), speakerBox(0.9, 0.18, 0.8, 0, 0.7, 0, 2, 0.05), speakerBox(0.9, 0.18, 0.8, 0, 0.88, 0, 2, 0.12)];
+      return { main: normalize(merge(parts)) };
+    }
+    case 'speakerCab':
+      return { main: normalize(speakerBox(1, 1, 1, 0, 0.5, 0, 1)) };
+    case 'wedgeMonitor': {
+      const w = wedge().toNonIndexed();
+      return { main: normalize(merge([w, new THREE.CylinderGeometry(0.22, 0.16, 0.04, 16).rotateX(-Math.PI / 4).translate(0, 0.52, 0.02)])) };
+    }
+    case 'speakerTower': {
+      const parts = [new THREE.CylinderGeometry(0.03, 0.03, 0.65, 8).translate(0, 0.33, 0), box(0.6, 0.02, 0.6, 0, 0.01, 0), speakerBox(1, 0.18, 0.8, 0, 0.75, 0, 2), speakerBox(1, 0.18, 0.8, 0, 0.92, 0, 2, 0.1)];
+      return { main: normalize(merge(parts)) };
+    }
+    case 'delayTower': {
+      const tower = trussGeo(10, 0.09).rotateZ(Math.PI / 2).translate(0.5, 0.5, 0).scale(0.25, 0.75, 0.25);
+      const array: THREE.BufferGeometry[] = [];
+      for (let i = 0; i < 6; i++) array.push(speakerBox(0.55, 0.035, 0.45, 0, 0.95 - i * 0.04, 0.2, 2, i * 0.04));
+      return { main: normalize(merge([tower, ...array, box(0.7, 0.02, 0.7, 0, 0.01, 0)])) };
+    }
+  }
+  return null;
+}
+
 export function variantFor(kind: ObjectKind, size: Vec3) {
   if (kind === 'truss') return Math.max(2, Math.min(60, Math.round(size[0] / Math.max(0.2, size[1]))));
   if (kind === 'trussTower') return Math.max(2, Math.min(60, Math.round(size[1] / Math.max(0.2, size[0]))));
   return 0;
 }
 
-export function getGeometry(kind: ObjectKind, size: Vec3): KindGeometry {
+export function getGeometry(kind: ObjectKind, size: Vec3, outline?: [number, number][]): KindGeometry {
   const v = variantFor(kind, size);
-  const key = `${kind}:${v}`;
+  const key = kind === 'custom' ? `custom:${JSON.stringify(outline ?? [])}` : `${kind}:${v}`;
   let g = cache.get(key);
   if (!g) {
-    g = build(kind, v);
+    g = build(kind, v, outline);
     cache.set(key, g);
   }
   return g;
 }
 
 /** Which UV-based LED face is used: whole surface for these */
+const WHOLE = new Set<ObjectKind>(['ledPillar', 'ledFloor', 'ledSphere', 'ledCylinder', 'ledCube', 'ledTunnel', 'ledArch', 'ledCeiling', 'ledTransparent']);
 export function ledWholeSurface(kind: ObjectKind) {
-  return kind === 'ledPillar' || kind === 'ledFloor';
+  return WHOLE.has(kind);
 }

@@ -7,8 +7,13 @@ import { ArenaModel } from './ArenaModel';
 import { StageObjects } from './StageObjects';
 import { FixtureRig } from './Fixtures';
 import { Audience } from './Audience';
-import { CameraRig } from './CameraRig';
+import { CameraRig, clampIndoor } from './CameraRig';
 import { LowFog, PostFX, StageFx } from './Effects';
+import { SoundCoverage } from './SoundCoverage';
+import { PerformerRig } from './PerformerRig';
+import { Backstage } from './Backstage';
+import { Avatar } from './Avatar';
+import { DEFAULT_LOOK } from '../performer/state';
 import { stepEngine } from './lightingEngine';
 import { useSettings, QUALITY } from '../state/settingsStore';
 import { useUI } from '../state/uiStore';
@@ -16,7 +21,7 @@ import { useProject } from '../state/projectStore';
 import { thumbnailSource } from '../storage/autosave';
 import { fmt } from '../util/misc';
 
-export type ViewportMode = 'editor' | 'live' | 'preview' | 'menu';
+export type ViewportMode = 'editor' | 'live' | 'preview' | 'menu' | 'performer';
 
 /** Live performance numbers, read by the settings performance monitor. */
 export const perf = { fps: 0, calls: 0, tris: 0, frameMs: 0 };
@@ -128,26 +133,46 @@ function Scene({ mode, arenaId }: { mode: ViewportMode; arenaId: string }) {
   const gridSize = useUI((s) => s.gridSize);
   const showCrowd = useUI((s) => s.showCrowd);
   const view = useUI((s) => s.view);
+  const lightEnv = useUI((s) => s.lightEnv);
   const savedCam = useProject((s) => s.project?.camera);
   const arena = getArena(arenaId);
   const q = QUALITY[quality];
   const editor = mode === 'editor';
-  const crowd = mode === 'live' || mode === 'menu' || mode === 'preview' || (editor && (showCrowd || view === 'audience'));
+  const performerLook = useProject((s) => s.project?.performer?.look) ?? DEFAULT_LOOK;
+  const crowd = mode === 'live' || mode === 'performer' || mode === 'menu' || mode === 'preview' || (editor && (showCrowd || view === 'audience'));
   // restore the saved camera only when the editor first opens
-  const initial = useMemo(() => (editor && savedCam ? savedCam : undefined), [arenaId, editor]); // eslint-disable-line react-hooks/exhaustive-deps
+  const initial = useMemo(() => {
+    if (editor && savedCam) return savedCam;
+    // frame the design: center on its footprint so off-center stages (in-the-round, globes) are in view
+    const objs = (useProject.getState().project?.objects ?? []).filter((o) => !o.hidden);
+    if (!objs.length) return undefined;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const o of objs) {
+      const r = Math.max(o.size[0], o.size[2]) / 2;
+      x0 = Math.min(x0, o.pos[0] - r);
+      x1 = Math.max(x1, o.pos[0] + r);
+      z0 = Math.min(z0, o.pos[2] - r);
+      z1 = Math.max(z1, o.pos[2] + r);
+    }
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const R = Math.min(70, Math.max(14, Math.max(x1 - x0, z1 - z0) / 2));
+    return clampIndoor({ pos: [cx + R * 0.7, R * 0.55 + 6, cz + R * 1.25 + 10], target: [cx, 4, cz] }, arena);
+  }, [arenaId, editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
       <Engine />
       <PerfProbe />
       {editor && <ThumbnailBridge />}
-      <CameraRig arena={arena} autoRotate={mode === 'menu' || mode === 'preview'} initial={initial} />
+      {mode === 'performer' ? <PerformerRig arena={arena} /> : <CameraRig arena={arena} autoRotate={mode === 'menu' || mode === 'preview'} initial={initial} />}
+      {mode === 'performer' && <Backstage />}
+      {mode === 'performer' && <Avatar look={performerLook} />}
       <ArenaModel arena={arena} />
       <StageObjects interactive={editor} shadows={q.shadows} />
       <FixtureRig interactive={editor} lightCount={q.lights} ceiling={arena.ceiling} shadows={q.shadows} segs={q.beamSegs} />
       {crowd && <Audience arena={arena} count={mode === 'menu' ? Math.round(q.crowd * 0.6) : q.crowd} />}
       <LowFog count={quality === 'low' ? 10 : 22} />
-      {(mode === 'live' || mode === 'preview') && <StageFx />}
+      {(mode === 'live' || mode === 'preview' || mode === 'performer') && <StageFx />}
       {editor && showGrid && (
         <Grid
           position={[0, 0.02, 0]}
@@ -164,9 +189,10 @@ function Scene({ mode, arenaId }: { mode: ViewportMode; arenaId: string }) {
           followCamera={false}
         />
       )}
+      {editor && <SoundCoverage />}
       {editor && <Guides />}
       {editor && <Measure />}
-      <PostFX enabled={q.bloom} />
+      <PostFX bloom={q.bloom} ao={q.ao} smaa={q.smaa} cinematic={lightEnv === 'cinematic'} ultra={quality === 'ultra'} />
     </>
   );
 }
@@ -201,7 +227,8 @@ export const Viewport = memo(function Viewport({ mode, arenaId }: { mode: Viewpo
         <PerformanceMonitor
           flipflops={2}
           onDecline={() => {
-            if (quality === 'high') setEffective('medium');
+            if (quality === 'ultra') setEffective('high');
+            else if (quality === 'high') setEffective('medium');
             else if (quality === 'medium') setEffective('low');
           }}
         />

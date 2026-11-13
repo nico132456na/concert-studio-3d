@@ -284,7 +284,7 @@ function ScenesTab() {
     if (!p) return;
     const { scenes: sc, cues } = buildAutoShow(p.fixtures, p.objects, [p.fixtures[0]?.color ?? DEFAULT_PALETTE[0], p.fixtures[1]?.color ?? DEFAULT_PALETTE[1], '#ffffff']);
     useProject.getState().mutate((pp) => ({ ...pp, scenes: [...pp.scenes, ...sc], cues: pp.cues.length ? pp.cues : cues }));
-    toast('Added Intro, Verse, Chorus & Outro');
+    toast('Added Intro, Verse, Chorus, Bridge & Outro');
   };
   return (
     <>

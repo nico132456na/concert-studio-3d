@@ -20,6 +20,10 @@ export interface ArenaBuild {
   /** roof / ceiling / walls (dark) */
   shell: THREE.BufferGeometry | null;
   seats: SeatSet;
+  /** glass barriers / suite fronts */
+  glass?: THREE.BufferGeometry | null;
+  /** every seat (for instanced seat meshes on Ultra) */
+  allSeats?: SeatSet;
 }
 
 const cache = new Map<string, ArenaBuild>();
@@ -111,6 +115,13 @@ function buildBowl(a: ArenaDef): ArenaBuild {
     const [ex, ez] = se(t);
     return V(b.cx + ex * (b.a + d), y, b.cz + ez * (b.b + d));
   };
+  const glassB = new Builder();
+  const glassC = new THREE.Color('#9fc4ff');
+  const allPos: number[] = [];
+  const allYaw: number[] = [];
+  // entrance tunnels (vomitories) through the lower tier
+  const tunnelEvery = Math.floor(segs / 10);
+  const isTunnel = (i: number, row: number, k: number) => k === 0 && row < 7 && i % tunnelEvery < 3;
 
   for (let k = 0; k < b.tiers; k++) {
     const d0 = k * b.rows * b.rowDepth * 0.72 + k * 1.5;
@@ -123,7 +134,13 @@ function buildBowl(a: ArenaDef): ArenaBuild {
         const t0 = (i / segs) * Math.PI * 2, t1 = ((i + 1) / segs) * Math.PI * 2;
         const p0 = pt(t0, d, h), p1 = pt(t1, d, h);
         if (p0.z < b.cut || p1.z < b.cut) continue;
+        if (isTunnel(i, row, k)) continue;
         const q0 = pt(t0, d + b.rowDepth, h), q1 = pt(t1, d + b.rowDepth, h);
+        for (let s3 = 0; s3 < 3; s3++) {
+          const sp = pt(t0 + ((t1 - t0) * (s3 + 0.5)) / 3, d + b.rowDepth * 0.55, h);
+          allPos.push(sp.x, sp.y, sp.z);
+          allYaw.push(Math.atan2(b.cx - sp.x, b.cz - sp.z));
+        }
         seat.quad(p0, q0, q1, p1, col);
         const u0 = pt(t0, d + b.rowDepth, h + b.rise), u1 = pt(t1, d + b.rowDepth, h + b.rise);
         seat.quad(q0, u0, u1, q1, riser);
@@ -143,6 +160,26 @@ function buildBowl(a: ArenaDef): ArenaBuild {
       const base = k === 0 ? 0 : h0 - 2.2;
       seat.quad(pt(t0, d0, base), pt(t1, d0, base), pt(t1, d0, h0 - 0.5), pt(t0, d0, h0 - 0.5), riser);
       glowB.quad(pt(t0, d0 - 0.02, h0 - 0.5), pt(t1, d0 - 0.02, h0 - 0.5), pt(t1, d0 - 0.02, h0), pt(t0, d0 - 0.02, h0), ribbon);
+      // glass barrier + handrail on the tier front
+      glassB.quad(pt(t0, d0 + 0.05, h0), pt(t1, d0 + 0.05, h0), pt(t1, d0 + 0.05, h0 + 1.05), pt(t0, d0 + 0.05, h0 + 1.05), glassC);
+      if (i % 2 === 0) {
+        const a = pt(t0, d0 + 0.05, h0 + 1.08), c2 = pt(t1, d0 + 0.05, h0 + 1.08);
+        const g = new THREE.BoxGeometry(a.distanceTo(c2) * 2.05, 0.06, 0.06);
+        g.rotateY(-Math.atan2(c2.z - a.z, c2.x - a.x));
+        g.translate((a.x + c2.x) / 2, a.y, (a.z + c2.z) / 2);
+        struct.push(withColor(g, new THREE.Color('#b8bcc4')));
+      }
+      // tunnel mouths with exit signs
+      if (k === 0 && i % tunnelEvery === 1) {
+        const m0 = pt(t0, d0 - 0.01, 0), m1 = pt(t1 + (t1 - t0), d0 - 0.01, 0);
+        seat.quad(m0, m1, V(m1.x, 3.2, m1.z), V(m0.x, 3.2, m0.z), new THREE.Color('#030304'));
+        const sc = pt(t1, d0 - 0.06, 3.5);
+        glowB.quad(V(sc.x - 0.5, 3.4, sc.z), V(sc.x + 0.5, 3.4, sc.z), V(sc.x + 0.5, 3.75, sc.z), V(sc.x - 0.5, 3.75, sc.z), new THREE.Color('#1aff6a'));
+      }
+      // VIP suite windows between the tiers
+      if (k === 1) {
+        glowB.quad(pt(t0, d0 - 0.3, h0 - 2.1), pt(t1, d0 - 0.3, h0 - 2.1), pt(t1, d0 - 0.3, h0 - 0.9), pt(t0, d0 - 0.3, h0 - 0.9), i % 3 === 0 ? new THREE.Color('#2a1d10') : new THREE.Color('#ffcf8a').multiplyScalar(0.55));
+      }
     }
     outer = d0 + b.rows * b.rowDepth;
     topH = h0 + b.rows * b.rise;
@@ -155,7 +192,21 @@ function buildBowl(a: ArenaDef): ArenaBuild {
   for (let i = 0; i < segs; i++) {
     const t0 = (i / segs) * Math.PI * 2, t1 = ((i + 1) / segs) * Math.PI * 2;
     shell.quad(pt(t0, outer, 0), pt(t0, outer, a.ceiling ? ceil : topH + 3), pt(t1, outer, a.ceiling ? ceil : topH + 3), pt(t1, outer, 0), wall);
-    if (a.ceiling) {
+    if (a.ceiling && a.id === 'modern') {
+      const wave = (t: number) => Math.sin(t * 5) * 3.5;
+      const roofC = new THREE.Color('#d9dde3');
+      for (let r = 0; r < 6; r++) {
+        const f0 = r / 6, f1 = (r + 1) / 6;
+        const ring = (t: number, f: number) => {
+          const p = pt(t, outer * (1 - f) - (b.a * 0.75) * f, 0);
+          return V(p.x * (1 - f * 0.25) + b.cx * f * 0.25, ceil + wave(t) * (1 - f) + f * 6, p.z * (1 - f * 0.25) + b.cz * f * 0.25);
+        };
+        shell.quad(ring(t0, f0), ring(t0, f1), ring(t1, f1), ring(t1, f0), roofC.clone().multiplyScalar(0.55 + f1 * 0.2));
+      }
+      const o0 = pt(t0, -b.a * 0.75, 0), o1 = pt(t1, -b.a * 0.75, 0);
+      const oc = (p: THREE.Vector3) => V(p.x * 0.75 + b.cx * 0.25, ceil + 6, p.z * 0.75 + b.cz * 0.25);
+      glowB.quad(oc(o0), oc(o1), V(oc(o1).x, ceil + 6.6, oc(o1).z), V(oc(o0).x, ceil + 6.6, oc(o0).z), new THREE.Color('#9ec9ff'));
+    } else if (a.ceiling) {
       const c = V(b.cx, ceil + 4, b.cz);
       shell.quad(pt(t0, outer, ceil), c, c, pt(t1, outer, ceil), wall);
     }
@@ -169,6 +220,10 @@ function buildBowl(a: ArenaDef): ArenaBuild {
     void ext;
     // center-hung scoreboard style cube (pushed back behind audience area for end-stage layout)
     struct.push(boxAt(8, 5, 8, 0, ceil - 9, b.cz + b.b * 0.35, '#111216'));
+    // house PA clusters
+    for (const [sx, sz] of [[-1, 0.2], [1, 0.2], [-0.6, 0.75], [0.6, 0.75]]) {
+      for (let j = 0; j < 6; j++) struct.push(boxAt(1.2, 0.45, 1, sx * b.a * 0.55, ceil - 6 - j * 0.48, b.cz + sz * b.b, '#0d0d0f'));
+    }
     glowB.pos.length; // keep
   }
   // concourse lights (small glowing dots along the top)
@@ -202,6 +257,8 @@ function buildBowl(a: ArenaDef): ArenaBuild {
     glow: glowB.build(),
     shell: shell.build(),
     seats: { pos: new Float32Array(seatPos), yaw: new Float32Array(seatYaw), count: seatYaw.length },
+    glass: glassB.build(),
+    allSeats: { pos: new Float32Array(allPos), yaw: new Float32Array(allYaw), count: allYaw.length },
   };
 }
 
@@ -302,20 +359,31 @@ function buildWarehouse(a: ArenaDef): ArenaBuild {
   const glowB = new Builder();
   const steel = '#2e3036';
   const h = a.ceiling!;
-  for (const x of [-12, 12]) for (let z = 8; z <= 44; z += 12) struct.push(boxAt(0.6, h, 0.6, x, h / 2, z, steel));
-  for (let z = -12; z <= 48; z += 6) {
-    struct.push(boxAt(44, 0.5, 0.4, 0, h - 1.2, z, steel));
-    struct.push(boxAt(44, 0.25, 0.25, 0, h - 2.6, z, steel));
-    for (let x = -20; x <= 20; x += 4) struct.push(boxAt(0.15, 1.4, 0.15, x, h - 1.9, z, steel));
+  const hall = a.id === 'hall';
+  const [x0, x1, z0, z1] = [a.floor.xMin, a.floor.xMax, a.floor.zMin - 2, a.floor.zMax + 4];
+  const W = x1 - x0;
+  const colX = hall ? [-26, 26] : [-12, 12];
+  for (const x of colX) for (let z = 8; z <= z1 - 6; z += hall ? 16 : 12) struct.push(boxAt(hall ? 1 : 0.6, h, hall ? 1 : 0.6, x, h / 2, z, steel));
+  for (let z = z0 + 2; z <= z1 - 2; z += 6) {
+    struct.push(boxAt(W, 0.5, 0.4, 0, h - 1.2, z, steel));
+    struct.push(boxAt(W, 0.25, 0.25, 0, h - 2.6, z, steel));
+    for (let x = x0 + 2; x <= x1 - 2; x += 4) struct.push(boxAt(0.15, 1.4, 0.15, x, h - 1.9, z, steel));
   }
-  for (let z = 0; z < 48; z += 8) {
-    glowB.quad(V(-21.95, 9, z), V(-21.95, 11, z), V(-21.95, 11, z + 5), V(-21.95, 9, z + 5), new THREE.Color('#1a2a4a'));
-    glowB.quad(V(21.95, 9, z + 5), V(21.95, 11, z + 5), V(21.95, 11, z), V(21.95, 9, z), new THREE.Color('#1a2a4a'));
+  const win = hall ? new THREE.Color('#2a3a5a') : new THREE.Color('#1a2a4a');
+  for (let z = 0; z < z1 - 4; z += 8) {
+    glowB.quad(V(x0 + 0.05, h * 0.62, z), V(x0 + 0.05, h * 0.78, z), V(x0 + 0.05, h * 0.78, z + 5), V(x0 + 0.05, h * 0.62, z + 5), win);
+    glowB.quad(V(x1 - 0.05, h * 0.62, z + 5), V(x1 - 0.05, h * 0.78, z + 5), V(x1 - 0.05, h * 0.78, z), V(x1 - 0.05, h * 0.62, z), win);
   }
-  glowB.quad(V(-1, 3, 49.9), V(1, 3, 49.9), V(1, 3.6, 49.9), V(-1, 3.6, 49.9), new THREE.Color('#1aff6a'));
+  if (hall) {
+    // skylights and a raised VIP deck at the back
+    for (let z = 4; z < z1 - 8; z += 14) glowB.quad(V(-10, h - 0.05, z), V(10, h - 0.05, z), V(10, h - 0.05, z + 4), V(-10, h - 0.05, z + 4), new THREE.Color('#33415e'));
+    struct.push(boxAt(30, 2.5, 10, 0, 1.25, z1 - 10, '#26272b'));
+    glowB.quad(V(-15, 2.55, z1 - 15.02), V(15, 2.55, z1 - 15.02), V(15, 2.7, z1 - 15.02), V(-15, 2.7, z1 - 15.02), new THREE.Color('#ffcf8a'));
+  }
+  // exit signs on the back wall
+  for (const x of [-W / 4, W / 4]) glowB.quad(V(x - 1, 3, z1 - 0.1), V(x + 1, 3, z1 - 0.1), V(x + 1, 3.6, z1 - 0.1), V(x - 1, 3.6, z1 - 0.1), new THREE.Color('#1aff6a'));
   const shell = new Builder();
-  const wall = new THREE.Color('#2a2826');
-  const [x0, x1, z0, z1] = [-22, 22, -14, 50];
+  const wall = new THREE.Color(hall ? '#33322f' : '#2a2826');
   shell.quad(V(x0, 0, z0), V(x0, h, z0), V(x0, h, z1), V(x0, 0, z1), wall);
   shell.quad(V(x1, 0, z1), V(x1, h, z1), V(x1, h, z0), V(x1, 0, z0), wall);
   shell.quad(V(x0, 0, z1), V(x0, h, z1), V(x1, h, z1), V(x1, 0, z1), wall);

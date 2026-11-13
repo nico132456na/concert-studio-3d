@@ -3,7 +3,9 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { ArenaDef } from '../data/arenas';
-import { getArenaBuild } from './arenaGeometry';
+import { getArenaBuild, type SeatSet } from './arenaGeometry';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { useSettings, QUALITY } from '../state/settingsStore';
 import { floorTexture, grassTexture, pitchTexture } from './textures';
 import { engine } from './lightingEngine';
 import { useUI } from '../state/uiStore';
@@ -80,10 +82,15 @@ function AtmosphereSync({ arena }: { arena: ArenaDef }) {
     };
   }, [scene, arena]);
   useFrame(() => {
-    const live = useUI.getState().screen === 'live';
-    const house = engine.house * (live ? 0.35 : 1);
-    if (hemi.current) hemi.current.intensity = arena.ambient * 1.6 + house * 1.3;
-    if (dir.current) dir.current.intensity = house * 0.9 + (arena.sky === 'dusk' ? 0.15 : 0.05);
+    const ui = useUI.getState();
+    // lighting environment: work lights while building, darker for the show
+    const env = ui.screen === 'editor' ? ui.lightEnv : ui.screen === 'menu' || ui.screen === 'arenas' || ui.screen === 'gallery' ? 'preview' : ui.lightEnv === 'cinematic' ? 'cinematic' : 'concert';
+    let house = engine.house;
+    if (env === 'construction') house = Math.max(house, 0.9);
+    else if (env === 'concert') house *= 0.35;
+    else if (env === 'cinematic') house *= 0.2;
+    if (hemi.current) hemi.current.intensity = arena.ambient * 1.6 + house * 1.4;
+    if (dir.current) dir.current.intensity = house * (env === 'construction' ? 1.6 : 0.9) + (arena.sky === 'dusk' ? 0.15 : 0.05);
     if (scene.fog instanceof THREE.FogExp2) {
       const size = Math.max(arena.floor.xMax - arena.floor.xMin, arena.floor.zMax - arena.floor.zMin);
       scene.fog.density = (0.6 + engine.haze * 1.2) / Math.max(120, size * 3.2);
@@ -95,6 +102,36 @@ function AtmosphereSync({ arena }: { arena: ArenaDef }) {
       <directionalLight ref={dir} position={[30, 60, 50]} intensity={0.2} color="#c8d4ff" />
     </>
   );
+}
+
+/** Individual instanced seats (High/Ultra quality). */
+function ArenaSeats({ set }: { set: SeatSet }) {
+  const mesh = useMemo(() => {
+    const back = new THREE.BoxGeometry(0.46, 0.42, 0.06).translate(0, 0.55, -0.2);
+    const seat = new THREE.BoxGeometry(0.46, 0.08, 0.36).translate(0, 0.42, 0);
+    const g = mergeGeometries([back.toNonIndexed(), seat.toNonIndexed()])!;
+    const m = new THREE.MeshStandardMaterial({ color: '#3a4152', roughness: 0.7 });
+    const n = set.count;
+    const im = new THREE.InstancedMesh(g, m, n);
+    const mtx = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    const one = new THREE.Vector3(1, 1, 1);
+    for (let i = 0; i < n; i++) {
+      q.setFromAxisAngle(up, set.yaw[i] + Math.PI);
+      mtx.compose(new THREE.Vector3(set.pos[i * 3], set.pos[i * 3 + 1] - 0.4, set.pos[i * 3 + 2]), q, one);
+      im.setMatrixAt(i, mtx);
+    }
+    im.instanceMatrix.needsUpdate = true;
+    im.raycast = () => {};
+    return im;
+  }, [set]);
+  useEffect(() => () => {
+    mesh.geometry.dispose();
+    (mesh.material as THREE.Material).dispose();
+    mesh.dispose();
+  }, [mesh]);
+  return <primitive object={mesh} />;
 }
 
 export function ArenaModel({ arena }: { arena: ArenaDef }) {
@@ -120,7 +157,9 @@ export function ArenaModel({ arena }: { arena: ArenaDef }) {
   const structMat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.4 }), []);
   const shellMat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide }), []);
   const glowMat = useMemo(() => new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, toneMapped: false }), []);
-  useEffect(() => () => [seatingMat, structMat, shellMat, glowMat].forEach((m) => m.dispose()), [seatingMat, structMat, shellMat, glowMat]);
+  const glassMat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.2, side: THREE.DoubleSide, depthWrite: false }), []);
+  const seats = useSettings((st) => QUALITY[st.effective].seats);
+  useEffect(() => () => [seatingMat, structMat, shellMat, glowMat, glassMat].forEach((m) => m.dispose()), [seatingMat, structMat, shellMat, glowMat, glassMat]);
 
   const outerGround = arena.kind === 'festival' || arena.kind === 'amphi' || arena.kind === 'stadium' || arena.kind === 'empty';
 
@@ -143,6 +182,8 @@ export function ArenaModel({ arena }: { arena: ArenaDef }) {
       {build.structure && <mesh geometry={build.structure} material={structMat} raycast={noRay} />}
       {build.shell && <mesh geometry={build.shell} material={shellMat} raycast={noRay} />}
       {build.glow && <mesh geometry={build.glow} material={glowMat} raycast={noRay} />}
+      {build.glass && <mesh geometry={build.glass} material={glassMat} raycast={noRay} renderOrder={2} />}
+      {seats && build.allSeats && build.allSeats.count > 0 && <ArenaSeats set={build.allSeats} />}
     </group>
   );
 }

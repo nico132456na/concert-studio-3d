@@ -47,7 +47,7 @@ export function Gallery() {
   }, [project]);
 
   const load = async () => {
-    await createProject(design.arenaId, design.build(), `${design.title} (my version)`, `Inspired by ${artist.name}`);
+    await createProject(design.arenaId, design.build(), `${design.title} (my version)`, design.accuracy === 'reference' ? `Based on ${artist.name} — ${design.tour} (${design.year})` : `Inspired by ${artist.name}`);
   };
 
   return (
@@ -58,7 +58,7 @@ export function Gallery() {
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="screen-title">Artist Stages</div>
-          <div className="screen-sub">Original designs inspired by each artist's visual style — not exact tour recreations</div>
+          <div className="screen-sub">30 artists · “Tour recreation” = simplified model of a real tour's reported stage · “Inspired” = original design in the artist's style</div>
         </div>
         <button className="btn primary" onClick={load}>
           <Pencil size={18} /> Edit this stage
@@ -74,7 +74,7 @@ export function Gallery() {
                 <div className="row wrap" style={{ marginTop: 10 }}>
                   {a.designs.map((d) => (
                     <button key={d.id} className={`btn small ${d.id === design.id ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setDesignId(d.id); }}>
-                      {d.title}
+                      {d.title}{d.accuracy === 'reference' ? ` · ${d.year}` : ''}
                     </button>
                   ))}
                 </div>
@@ -94,7 +94,11 @@ export function Gallery() {
               <button className="icon-btn" style={{ position: 'absolute', top: 4, right: 4 }} onClick={() => setInfoOpen(false)} aria-label="Hide details">
                 <X size={20} />
               </button>
-              <span className="badge">Inspired by {artist.name}</span>
+              <div className="row wrap" style={{ gap: 6 }}>
+                <span className="badge" style={design.accuracy === 'reference' ? { background: '#2f7fe0', color: '#fff' } : undefined}>{design.accuracy === 'reference' ? 'Tour recreation · simplified' : 'Inspired design'}</span>
+                <span className="badge">{artist.name}</span>
+                {design.accuracy === 'reference' && <span className="badge">{design.tour} · {design.year}</span>}
+              </div>
               <div style={{ fontSize: 20, fontWeight: 800, marginTop: 8 }}>{design.title}</div>
               <div className="hint" style={{ marginTop: 4 }}>{design.description}</div>
               <div className="stats">

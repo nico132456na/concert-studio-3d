@@ -20,14 +20,16 @@ interface Ctx {
 
 const STEPS: Step[] = [
   { title: 'Pick an arena', text: 'Tap a venue on the left to preview it, then tap “Build here” and choose “Empty floor”.', target: '[data-tut="build-here"]', anim: 'tap', done: (c) => c.screen === 'editor' },
-  { title: 'Add a stage', text: 'Tap ADD, then in the Stage tab tap “Platform” (or “Build main stage”).', target: '[data-tut="tool-add"]', anim: 'tap', done: (c) => c.stats.stage > c.base.stage },
+  { title: 'Add a stage', text: 'Tap ADD, then tap any stage shape in the Stage tab — it appears instantly.', target: '[data-tut="tool-add"]', anim: 'tap', done: (c) => c.stats.stage > c.base.stage },
   { title: 'Add an LED screen', text: 'In the LED tab, tap “LED Wall”. It appears in the 3D view.', target: '[data-tut="lib-led"]', anim: 'tap', done: (c) => c.stats.led > c.base.led },
+  { title: 'Add speakers', text: 'Open the Sound tab and tap “Line Array”. The shaded floor shows where it reaches.', target: '[data-tut="lib-audio"]', anim: 'tap', done: (c) => c.stats.audio > c.base.audio },
   { title: 'Add lighting', text: 'Open the Lights tab and tap “Moving Spot”. Real light hits the stage.', target: '[data-tut="lib-lights"]', anim: 'tap', done: (c) => c.stats.light > c.base.light },
   { title: 'Change materials', text: 'Tap any object, then MATERIAL, and pick a finish like Brushed Aluminum.', target: '[data-tut="tool-materials"]', anim: 'tap', done: (c) => c.stats.materials > c.base.materials },
   { title: 'Move objects', text: 'With MOVE selected, tap an object, then drag it with one finger.', target: '[data-tut="tool-move"]', anim: 'swipe', done: (c) => c.stats.moves > c.base.moves },
   { title: 'Rotate the camera', text: 'Drag empty space with one finger to orbit. Pinch to zoom, two fingers to pan.', anim: 'swipe', done: (c) => c.stats.camera > c.base.camera },
   { title: 'Go live', text: 'Tap LIVE to run your concert, then press PLAY.', target: '[data-tut="live"]', anim: 'tap', done: (c) => c.screen === 'live' },
-  { title: 'Save your show', text: 'Tap Save. Your work also auto-saves, and you can reopen it from My Projects.', target: '[data-tut="save-live"]', anim: 'tap', done: (c) => c.stats.saves > c.base.saves },
+  { title: 'Become the performer', text: 'Tap Perform. You start in your dressing room — walk to the tunnel and take the lift onto the stage.', target: '[data-tut="perform-live"]', anim: 'tap', done: (c) => c.stats.perform > c.base.perform },
+  { title: 'Save your show', text: 'Tap Save (top right). Your work also auto-saves; reopen it from My Projects.', target: '[data-tut="save-perf"]', anim: 'tap', done: (c) => c.stats.saves > c.base.saves },
 ];
 
 export function Tutorial() {
@@ -69,7 +71,7 @@ export function Tutorial() {
 
   // step 1 lives in the library: open it automatically for steps 2–4
   useEffect(() => {
-    if (step !== null && step >= 2 && step <= 3 && screen === 'editor' && useUI.getState().left !== 'add') set({ left: 'add' });
+    if (step !== null && step >= 2 && step <= 4 && screen === 'editor' && useUI.getState().left !== 'add') set({ left: 'add' });
   }, [step, screen, set]);
 
   const finish = () => {

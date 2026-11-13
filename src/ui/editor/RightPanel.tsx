@@ -1,13 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  X, Copy, Trash2, Eye, Lock, Unlock, RotateCcw, Group, Ungroup, FlipHorizontal2, AlignCenterVertical, Crosshair, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ChevronsUp, ChevronsDown, ImagePlus, Save,
+  X, Copy, Trash2, Eye, Lock, Unlock, RotateCcw, Group, Ungroup, FlipHorizontal2, AlignCenterVertical, Crosshair, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ChevronsUp, ChevronsDown, ImagePlus, Save, Volume2,
 } from 'lucide-react';
 import { useUI, toast } from '../../state/uiStore';
 import { useProject, edit, getProject } from '../../state/projectStore';
 import { useSettings } from '../../state/settingsStore';
 import { MATERIAL_PRESETS, mat } from '../../data/materials';
 import { VISUALS, VISUAL_PRESETS } from '../../data/visuals';
-import { OBJECT_DEF, defaultLed } from '../../data/library';
+import { OBJECT_DEF, defaultLed, AUDIO_KINDS } from '../../data/library';
+import { coverageOf } from '../../three/SoundCoverage';
+import { testSpeaker } from '../../audio/beat';
 import type { LedSpec, MaterialSpec, StageObject, TextureKind, Vec3 } from '../../types';
 import { ColorPicker, NumberField, Seg, Slider, Toggle, PromptModal } from '../components';
 import { nudge } from '../../three/interaction';
@@ -77,6 +79,7 @@ function ObjectTab({ objs }: { objs: StageObject[] }) {
         <button className="btn small" onClick={() => requestCamera('free', [o.pos[0], o.pos[1] + o.size[1] / 2, o.pos[2]], Math.max(6, Math.max(...o.size) * 1.8))}><Crosshair size={16} /> Focus</button>
       </div>
       {anyLocked && <div className="hint" style={{ marginTop: 8 }}>Locked items can't be moved or resized.</div>}
+      {objs.some((x) => AUDIO_KINDS.has(x.kind)) && <SpeakerSection objs={objs.filter((x) => AUDIO_KINDS.has(x.kind))} />}
 
       <div className="section-title">Position</div>
       <div className="row" style={{ justifyContent: 'center', gap: 6 }}>
@@ -144,6 +147,32 @@ function ObjectTab({ objs }: { objs: StageObject[] }) {
         />
       )}
       {renaming && <PromptModal title="Rename" initial={o.name} onClose={() => setRenaming(false)} onDone={(v) => { edit.updateObject(o.id, { name: v }); setRenaming(false); }} />}
+    </>
+  );
+}
+
+function SpeakerSection({ objs }: { objs: StageObject[] }) {
+  const show = useUI((s) => s.showCoverage);
+  const set = useUI((s) => s.set);
+  const c = coverageOf(objs[0]);
+  return (
+    <>
+      <div className="section-title">Sound</div>
+      {c && (
+        <div className="hint" style={{ marginBottom: 8 }}>
+          <span className="dot" style={{ background: c.color, display: 'inline-block', width: 10, height: 10, marginRight: 6 }} />
+          {c.role} · about {Math.round(c.range)} m throw · {c.angle >= 360 ? 'omni' : `${c.angle}° wide`}
+        </div>
+      )}
+      <div className="grid-2">
+        <button className="btn small" onClick={() => objs.forEach((o, i) => setTimeout(() => testSpeaker(o.kind, o.pos[0]), i * 300))}>
+          <Volume2 size={16} /> Test sound
+        </button>
+        <button className={`btn small ${show ? 'active' : ''}`} onClick={() => set({ showCoverage: !show })}>
+          {show ? 'Hide' : 'Show'} all coverage
+        </button>
+      </div>
+      <div className="hint" style={{ marginTop: 8 }}>Shaded area = approximate coverage on the floor. Turn the speaker to aim it.</div>
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Play, Pause, RotateCcw, SkipForward, X, Save, Moon } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, X, Save, Moon, PersonStanding } from 'lucide-react';
+import { enterPerformer } from '../../performer/flow';
 import { Viewport } from '../../three/Viewport';
 import { ErrorBoundary, Slider } from '../components';
 import { useUI, type CameraPresetId } from '../../state/uiStore';
@@ -36,6 +37,7 @@ export function LiveMode() {
   const [prog, setProg] = useState(0);
   const [selFx, setSelFx] = useState<string | null>(null);
   const music = useSettings((x) => x.music);
+  const lightEnv = useUI((x) => x.lightEnv);
 
   useEffect(() => {
     const t = window.setInterval(() => setProg(cueProgress()), 150);
@@ -72,6 +74,9 @@ export function LiveMode() {
         <div className="live-title">{project.name}</div>
         <span className="spacer" />
         {sceneName && <div className="badge" style={{ fontSize: 13 }}>{s.playing ? '▶' : '❚❚'} {sceneName}</div>}
+        <button className="btn" onClick={() => { exitLive(); enterPerformer(); }} style={{ borderColor: '#4da3ff' }} data-tut="perform-live">
+          <PersonStanding size={18} /> Perform
+        </button>
         <button className="btn" onClick={manualSave} data-tut="save-live">
           <Save size={18} /> Save
         </button>
@@ -145,6 +150,10 @@ export function LiveMode() {
           )}
           {tray === 'camera' && (
             <div className="pad-row">
+              <button className={`pad ${lightEnv === 'cinematic' ? 'on' : ''}`} onClick={() => useUI.getState().set({ lightEnv: lightEnv === 'cinematic' ? 'construction' : 'cinematic' })}>
+                Cinematic
+                <small>Depth of field</small>
+              </button>
               <button className={`pad ${autoCam ? 'on' : ''}`} onClick={() => setAutoCam(!autoCam)}>
                 Auto director
                 <small>Cuts every 7s</small>
@@ -215,6 +224,7 @@ export function LiveMode() {
               </button>
               <button className="pad" onClick={() => edit.setAtmosphere({ fog: Math.min(1, (project.atmosphere.fog ?? 0) + 0.3) }, 'live-fog')}>FOG +<small>Low fog</small></button>
               <button className="pad" onClick={() => edit.setAtmosphere({ fog: 0 }, 'live-fog')}>FOG OFF<small>Clear</small></button>
+              <button className={`pad ${s.phoneLights ? 'on' : ''}`} onClick={() => s.set({ phoneLights: !s.phoneLights })}>PHONE LIGHTS<small>Crowd</small></button>
             </div>
           )}
         </div>

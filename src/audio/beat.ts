@@ -4,6 +4,8 @@
  */
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let streamOut: MediaStreamAudioDestinationNode | null = null;
+export const beatStream = () => streamOut?.stream ?? null;
 let timer: number | undefined;
 let nextTime = 0;
 let step = 0;
@@ -20,6 +22,8 @@ function ensure() {
     master = ctx.createGain();
     master.gain.value = 0.6;
     master.connect(ctx.destination);
+    streamOut = ctx.createMediaStreamDestination();
+    master.connect(streamOut);
   }
   return ctx;
 }
@@ -114,3 +118,48 @@ export const beat = {
     return running;
   },
 };
+
+
+/** Short pink-noise burst shaped like the chosen speaker, panned by its position. */
+export function testSpeaker(kind: string, x: number) {
+  const c = ensure();
+  if (!c || !master) return;
+  c.resume().catch(() => {});
+  const len = 1.4;
+  const buf = c.createBuffer(1, c.sampleRate * len, c.sampleRate);
+  const d = buf.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0;
+  for (let i = 0; i < d.length; i++) {
+    const w = Math.random() * 2 - 1;
+    b0 = 0.99765 * b0 + w * 0.099;
+    b1 = 0.963 * b1 + w * 0.2965;
+    b2 = 0.57 * b2 + w * 1.0526;
+    d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.12;
+  }
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const f = c.createBiquadFilter();
+  if (kind === 'subwoofer') {
+    f.type = 'lowpass';
+    f.frequency.value = 110;
+  } else if (kind === 'wedgeMonitor' || kind === 'speakerCab') {
+    f.type = 'bandpass';
+    f.frequency.value = 1800;
+    f.Q.value = 0.6;
+  } else {
+    f.type = 'highpass';
+    f.frequency.value = 60;
+  }
+  const g = c.createGain();
+  const t = c.currentTime;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(kind === 'subwoofer' ? 1.6 : 0.8, t + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  const pan = c.createStereoPanner ? c.createStereoPanner() : null;
+  if (pan) pan.pan.value = Math.max(-1, Math.min(1, x / 25));
+  src.connect(f).connect(g);
+  if (pan) g.connect(pan).connect(master);
+  else g.connect(master);
+  src.start(t);
+  src.stop(t + len);
+}

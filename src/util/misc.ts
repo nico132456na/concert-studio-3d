@@ -104,6 +104,32 @@ export async function downloadText(filename: string, text: string, mime = 'appli
   return true;
 }
 
+/** Save a binary file (video, image) through the artifact viewer or a normal download. */
+export async function saveBlob(filename: string, blob: Blob): Promise<boolean> {
+  const host = (window as any).claude;
+  if (host?.use) {
+    try {
+      const dl = await host.use('downloads');
+      if (dl) {
+        await dl.save({ filename, data: blob });
+        return true;
+      }
+    } catch (e: any) {
+      if (e?.code === 'declined') return false;
+      if (e?.code && e.code !== 'unavailable' && e.code !== 'not_granted') throw new Error(e.message || e.code);
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 8000);
+  return true;
+}
+
 export function timeAgo(ts: number) {
   const s = Math.round((Date.now() - ts) / 1000);
   if (s < 60) return 'just now';

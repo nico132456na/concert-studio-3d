@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
-export type Graphics = 'auto' | 'low' | 'medium' | 'high';
+export type Graphics = 'auto' | 'low' | 'medium' | 'high' | 'ultra';
+export type Quality = 'low' | 'medium' | 'high' | 'ultra';
 
 export interface Settings {
   graphics: Graphics;
@@ -40,12 +41,12 @@ function load(): Settings {
 
 interface SettingsState extends Settings {
   /** quality actually in use (auto resolves to one of these) */
-  effective: 'low' | 'medium' | 'high';
+  effective: Quality;
   update: (p: Partial<Settings>) => void;
-  setEffective: (q: 'low' | 'medium' | 'high') => void;
+  setEffective: (q: Quality) => void;
 }
 
-function guessQuality(): 'low' | 'medium' | 'high' {
+function guessQuality(): Quality {
   const mem = (navigator as any).deviceMemory as number | undefined;
   const cores = navigator.hardwareConcurrency || 4;
   if ((mem && mem <= 2) || cores <= 2) return 'low';
@@ -72,8 +73,9 @@ export const useSettings = create<SettingsState>((set, get) => {
   };
 });
 
-export const QUALITY = {
-  low: { dpr: 1, lights: 4, bloom: false, crowd: 1500, shadows: false, beamSegs: 12 },
-  medium: { dpr: 1.5, lights: 8, bloom: true, crowd: 4500, shadows: false, beamSegs: 18 },
-  high: { dpr: 2, lights: 12, bloom: true, crowd: 9000, shadows: true, beamSegs: 24 },
+export const QUALITY: Record<Quality, { dpr: number; lights: number; bloom: boolean; crowd: number; shadows: boolean; beamSegs: number; ao: boolean; smaa: boolean; seats: boolean; label: string }> = {
+  low: { dpr: 1, lights: 4, bloom: false, crowd: 1500, shadows: false, beamSegs: 12, ao: false, smaa: false, seats: false, label: 'Performance' },
+  medium: { dpr: 1.5, lights: 8, bloom: true, crowd: 4500, shadows: false, beamSegs: 18, ao: false, smaa: true, seats: false, label: 'Balanced' },
+  high: { dpr: 2, lights: 12, bloom: true, crowd: 9000, shadows: true, beamSegs: 24, ao: true, smaa: true, seats: true, label: 'High Quality' },
+  ultra: { dpr: 2, lights: 16, bloom: true, crowd: 15000, shadows: true, beamSegs: 32, ao: true, smaa: true, seats: true, label: 'Ultra' },
 };

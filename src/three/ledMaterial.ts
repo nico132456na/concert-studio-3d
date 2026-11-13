@@ -169,6 +169,52 @@ vec3 visual(vec2 uv, float t) {
     float s = texture2D(uMap, tuv).r * uHasMap;
     return uC1 * s * 1.4 + uC2 * 0.05;
   }
+  if (m == 19) {
+    // rotating Earth (equirectangular on sphere UVs)
+    vec2 e = vec2(fract(uv.x + t * 0.015), uv.y);
+    float lat = (e.y - 0.5) * 3.14159;
+    float land = fbm(vec2(e.x * 7.0, e.y * 3.5) + 3.7);
+    land = smoothstep(0.5, 0.56, land + 0.08 * (1.0 - abs(e.y - 0.5) * 2.0));
+    float ice = smoothstep(0.82, 0.92, abs(e.y - 0.5) * 2.0);
+    vec3 ocean = mix(vec3(0.01, 0.05, 0.18), uC1 * 0.25 + vec3(0.02, 0.12, 0.35), 0.5 + 0.5 * fbm(e * 12.0));
+    vec3 ground = mix(vec3(0.08, 0.22, 0.06), vec3(0.42, 0.33, 0.18), fbm(e * 18.0));
+    vec3 c = mix(ocean, ground, land);
+    c = mix(c, vec3(0.9), ice);
+    float cloud = smoothstep(0.55, 0.8, fbm(vec2(e.x * 9.0 + t * 0.03, e.y * 5.0)));
+    c = mix(c, vec3(0.95), cloud * 0.7);
+    float night = smoothstep(-0.2, 0.3, sin(e.x * 6.2831 + t * 0.1));
+    c *= 0.35 + 0.65 * night;
+    c += uC2 * (1.0 - night) * land * step(0.75, h21(floor(e * vec2(300.0, 150.0)))) * 0.8;
+    return c * (0.6 + 0.4 * cos(lat * 0.6));
+  }
+  if (m == 20) {
+    // deep space nebula
+    vec2 q = p * 2.0;
+    float n = fbm(q + vec2(t * 0.03, 0.0) + fbm(q * 1.7 - t * 0.02));
+    vec3 c = mix(vec3(0.0, 0.0, 0.02), uC1 * 0.9, smoothstep(0.35, 0.8, n));
+    c = mix(c, uC2, smoothstep(0.65, 0.95, fbm(q * 2.3 + 9.0)) * 0.7);
+    vec2 g = uv * vec2(uAspect, 1.0) * 90.0;
+    float star = step(0.985, h21(floor(g))) * (0.5 + 0.5 * sin(t * 4.0 + h21(floor(g)) * 40.0));
+    return c + vec3(star);
+  }
+  if (m == 21) {
+    // stained glass: voronoi cells with dark lead lines
+    vec2 g = p * 5.0;
+    vec2 id = floor(g), f = fract(g);
+    float d1 = 9.0, d2 = 9.0;
+    vec2 best = vec2(0.0);
+    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+      vec2 o = vec2(float(i), float(j));
+      vec2 r = o + vec2(h21(id + o), h21(id + o + 5.3)) - f;
+      float d = dot(r, r);
+      if (d < d1) { d2 = d1; d1 = d; best = id + o; } else if (d < d2) d2 = d;
+    }
+    float lead = smoothstep(0.02, 0.08, sqrt(d2) - sqrt(d1));
+    float k = h21(best);
+    vec3 col = k < 0.33 ? uC1 : k < 0.66 ? uC2 : mix(uC1, uC2, 0.5).gbr;
+    col *= 0.7 + 0.5 * sin(t + k * 20.0);
+    return col * lead;
+  }
   if (m == 18) {
     if (uHasMap < 0.5) return mix(uC1, uC2, uv.y) * 0.25;
     return texture2D(uMap, uv).rgb;
