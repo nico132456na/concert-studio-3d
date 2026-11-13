@@ -35,6 +35,7 @@ const beamVert = /* glsl */ `
 varying float vAlong;
 varying vec3 vN;
 varying vec3 vV;
+varying float vDepth;
 #include <common>
 #include <logdepthbuf_pars_vertex>
 void main(){
@@ -42,6 +43,7 @@ void main(){
   vN = normalize(normalMatrix * normal);
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   vV = normalize(-mv.xyz);
+  vDepth = -mv.z;
   gl_Position = projectionMatrix * mv;
   #include <logdepthbuf_vertex>
 }`;
@@ -52,6 +54,7 @@ uniform float uFocus;
 varying float vAlong;
 varying vec3 vN;
 varying vec3 vV;
+varying float vDepth;
 #include <common>
 #include <logdepthbuf_pars_fragment>
 void main(){
@@ -59,7 +62,7 @@ void main(){
   float edge = abs(dot(normalize(vN), normalize(vV)));
   float soft = pow(edge, mix(1.2, 3.5, uFocus));
   float fall = pow(clamp(1.0 - vAlong, 0.0, 1.0), 1.6);
-  float a = uIntensity * soft * fall;
+  float a = uIntensity * soft * fall * smoothstep(0.6, 5.0, vDepth);
   gl_FragColor = vec4(uColor * a, 1.0);
 }`;
 
@@ -106,7 +109,7 @@ const FixtureView = memo(function FixtureView({ f, selected, interactive, ceilin
   const isStrobe = f.type === 'strobe';
   const hasBeam = !isTube;
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const o = outputs.get(f.id);
     if (!o) return;
     const I = o.intensity;
@@ -116,9 +119,9 @@ const FixtureView = memo(function FixtureView({ f, selected, interactive, ceilin
     lensMat.color.copy(o.color).multiplyScalar(0.3 + I * (isTube ? 4 : 3));
     if (glow.current) {
       glowMat.color.copy(o.color).multiplyScalar(Math.min(2, I * 1.4));
-      const s = (isBlinder ? 4 : isStrobe ? 3.5 : isBar ? 2.6 : 1.6) * (0.4 + I);
+      const s = (isBlinder ? 4 : isStrobe ? 3.5 : isBar ? 1.6 : 1.6) * (0.4 + I);
       glow.current.scale.set(s, s, s);
-      glow.current.visible = I > 0.01;
+      glow.current.visible = I > 0.01 && glow.current.getWorldPosition(tmpV).distanceTo(camera.position) > s * 1.6;
     }
     if (beam.current && hasBeam && !isLaser) {
       let L = 55;
@@ -280,7 +283,7 @@ function LightPool({ count, shadows }: { count: number; shadows: boolean }) {
       l.angle = Math.min(1.2, Math.max(0.03, (o.beamAngle / 2) * 1.1));
       l.penumbra = 1 - o.focus * 0.6;
       const narrow = 1 + (0.6 - Math.min(0.6, o.beamAngle)) * 2;
-      l.intensity = o.intensity * 9 * narrow;
+      l.intensity = o.intensity * 5.5 * Math.min(1.6, narrow);
     });
   });
   return null;

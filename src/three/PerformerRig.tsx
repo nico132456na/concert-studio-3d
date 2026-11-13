@@ -13,7 +13,7 @@ import { ctx } from './interaction';
 import { crowd } from '../audio/crowd';
 import type { StageObject } from '../types';
 
-export const capture: { gl: THREE.WebGLRenderer | null; still: (() => string) | null } = { gl: null, still: null };
+export const capture: { gl: THREE.WebGLRenderer | null; still: (() => string) | null; scene?: THREE.Scene; camera?: THREE.Camera } = { gl: null, still: null };
 
 /** Where the performer appears when the stage lift reaches the top. */
 export function stageArrival(objects: StageObject[]): [number, number, number] {
@@ -35,6 +35,30 @@ const tmp = new THREE.Vector3();
 const look = new THREE.Vector3();
 const camPos = new THREE.Vector3();
 
+/** A follow spot from the front-of-house truss that tracks the performer on stage. */
+function FollowSpot() {
+  const light = useRef<THREE.SpotLight>(null);
+  const { scene } = useThree();
+  useEffect(() => {
+    const l = light.current;
+    if (!l) return;
+    scene.add(l.target);
+    return () => {
+      scene.remove(l.target);
+    };
+  }, [scene]);
+  useFrame(() => {
+    const l = light.current;
+    if (!l) return;
+    const on = player.pos.y > -3;
+    l.intensity = on ? 11 : 0;
+    l.position.set(player.pos.x * 0.6, player.pos.y + 14, player.pos.z + 22);
+    l.target.position.set(player.pos.x, player.pos.y + 1, player.pos.z);
+    l.target.updateMatrixWorld();
+  });
+  return <spotLight ref={light} color="#fff1dc" angle={0.06} penumbra={0.7} decay={0} distance={0} intensity={0} />;
+}
+
 export function PerformerRig({ arena }: { arena: ArenaDef }) {
   const { camera, gl, scene } = useThree();
   const autoT = useRef(0);
@@ -46,6 +70,8 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
     ctx.dom = gl.domElement;
     ctx.controls = null;
     capture.gl = gl;
+    capture.scene = scene;
+    capture.camera = camera;
     capture.still = () => {
       gl.render(scene, camera);
       return gl.domElement.toDataURL('image/png');
@@ -235,5 +261,10 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
     void ROOM_BY_ID;
   });
 
-  return <PerspectiveCamera makeDefault fov={55} near={0.08} far={2500} position={[0, -6, -10]} />;
+  return (
+    <>
+      <PerspectiveCamera makeDefault fov={55} near={0.08} far={2500} position={[0, -6, -10]} />
+      <FollowSpot />
+    </>
+  );
 }

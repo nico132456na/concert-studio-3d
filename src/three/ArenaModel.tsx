@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { ArenaDef } from '../data/arenas';
 import { getArenaBuild, type SeatSet } from './arenaGeometry';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -53,17 +52,44 @@ function Sky({ kind }: { kind: ArenaDef['sky'] }) {
   );
 }
 
+/** A dark arena-like environment for reflections: black room, a ring of distant rig lights. */
+function arenaEnvScene() {
+  const sc = new THREE.Scene();
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.MeshBasicMaterial({ color: '#2b2e38', side: THREE.BackSide }));
+  sc.add(dome);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(48, 48, 4, 48, 1, true), new THREE.MeshBasicMaterial({ color: '#4a4e5a', side: THREE.BackSide }));
+  band.position.y = 2;
+  sc.add(band);
+  const lamp = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.1, 2.0) });
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 3), lamp);
+    m.position.set(Math.sin(a) * 26, 28, Math.cos(a) * 26);
+    sc.add(m);
+  }
+  const warm = new THREE.Mesh(new THREE.PlaneGeometry(30, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 0.5, 0.35), side: THREE.DoubleSide }));
+  warm.position.set(0, 10, -40);
+  sc.add(warm);
+  return sc;
+}
+
 function Environment() {
   const { gl, scene } = useThree();
   useEffect(() => {
     const pmrem = new THREE.PMREMGenerator(gl);
-    const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const src = arenaEnvScene();
+    const env = pmrem.fromScene(src, 0.02).texture;
     scene.environment = env;
-    (scene as any).environmentIntensity = 0.35;
+    (scene as any).environmentIntensity = 1.1;
     return () => {
       scene.environment = null;
       env.dispose();
       pmrem.dispose();
+      src.traverse((o) => {
+        const m = o as THREE.Mesh;
+        m.geometry?.dispose();
+        (m.material as THREE.Material | undefined)?.dispose?.();
+      });
     };
   }, [gl, scene]);
   return null;
@@ -89,7 +115,7 @@ function AtmosphereSync({ arena }: { arena: ArenaDef }) {
     if (env === 'construction') house = Math.max(house, 0.9);
     else if (env === 'concert') house *= 0.35;
     else if (env === 'cinematic') house *= 0.2;
-    if (hemi.current) hemi.current.intensity = arena.ambient * 1.6 + house * 1.4;
+    if (hemi.current) hemi.current.intensity = Math.max(0.55, arena.ambient * 1.6 + house * 1.4);
     if (dir.current) dir.current.intensity = house * (env === 'construction' ? 1.6 : 0.9) + (arena.sky === 'dusk' ? 0.15 : 0.05);
     if (scene.fog instanceof THREE.FogExp2) {
       const size = Math.max(arena.floor.xMax - arena.floor.xMin, arena.floor.zMax - arena.floor.zMin);

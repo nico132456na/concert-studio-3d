@@ -53,14 +53,18 @@ export function LowFog({ count = 22 }: { count?: number }) {
     const t = state.clock.elapsedTime;
     const front = stageFront();
     const lvl = sampleAmbientColor(avg);
-    mat.opacity = engine.fog * 0.32;
-    mat.color.setRGB(0.25, 0.25, 0.28).lerp(avg, 0.65).multiplyScalar(0.6 + lvl * 1.2 + engine.house * 0.4);
+    mat.color.setRGB(0.25, 0.25, 0.28).lerp(avg, 0.65).multiplyScalar(Math.min(0.85, 0.45 + lvl * 0.6 + engine.house * 0.25));
+    // thinner when the camera is down at fog level (performer / crowd views)
+    const low = state.camera.position.y < 4 ? 0.45 : 1;
+    mat.opacity = engine.fog * 0.32 * low;
     if (!group.current) return;
     group.current.visible = engine.fog > 0.02;
     group.current.children.forEach((c, i) => {
       const s = seeds[i];
       c.position.set(s.x * (front.w * 0.6 + 6) + Math.sin(t * s.sp + s.ph) * 2, 0.8 + Math.sin(t * 0.3 + s.ph) * 0.3, front.z - 6 + s.z * 16);
       c.scale.set(s.s, s.s * 0.45, 1);
+      // never let a fog puff fill the lens when the camera is right inside it
+      c.visible = c.position.distanceTo(state.camera.position) > s.s * 1.5;
     });
   });
   return (
