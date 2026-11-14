@@ -5,6 +5,8 @@ import { startAutosave } from './storage/autosave';
 import { MainMenu } from './ui/screens/MainMenu';
 import { ArenaSelect } from './ui/screens/ArenaSelect';
 import { Archive } from './ui/screens/Archive';
+import { CareerScreen } from './ui/screens/Career';
+import { LifeMode } from './ui/life/LifeMode';
 import { Projects } from './ui/screens/Projects';
 import { SettingsModal, StatsOverlay } from './ui/screens/SettingsModal';
 import { Editor } from './ui/editor/Editor';
@@ -63,6 +65,8 @@ export default function App() {
         {screen === 'editor' && <Editor />}
         {screen === 'live' && <LiveMode />}
         {screen === 'performer' && <PerformerMode />}
+        {screen === 'career' && <CareerScreen />}
+        {screen === 'life' && <LifeMode />}
       </ErrorBoundary>
       {screen === 'menu' && <Welcome />}
       <Tutorial />

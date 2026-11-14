@@ -15,7 +15,7 @@ import { saveBlob, uid } from '../../util/misc';
 import type { AvatarLook, HairStyle, TopStyle, BottomStyle } from '../../types';
 import { manualSave } from '../editor/Chrome';
 
-function Joystick() {
+export function Joystick() {
   const [knob, setKnob] = useState({ x: 0, y: 0 });
   const id = useRef<number | null>(null);
   const center = useRef({ x: 0, y: 0 });
@@ -58,7 +58,7 @@ function Joystick() {
 }
 
 /** Drag anywhere (not on a control) to look around. */
-function LookLayer() {
+export function LookLayer() {
   const last = useRef<Map<number, { x: number; y: number }>>(new Map());
   return (
     <div
@@ -80,13 +80,13 @@ function LookLayer() {
   );
 }
 
-const SKINS = ['#f2d0b5', '#e0b08a', '#c68a5e', '#9a6340', '#6b4128', '#3f2617'];
-const HAIRS: HairStyle[] = ['short', 'buzz', 'long', 'curly', 'braids', 'bun', 'bald'];
-const TOPS: TopStyle[] = ['tee', 'hoodie', 'jacket', 'tank', 'suit', 'jersey'];
-const BOTTOMS: BottomStyle[] = ['jeans', 'cargo', 'shorts', 'skirt', 'suit'];
-const COLORS = ['#111111', '#f2f2f2', '#d9a740', '#c0c0c0', '#ff2a4a', '#ff7a1a', '#ffc21a', '#3ddc84', '#1ae0ff', '#2a7bff', '#8a2aff', '#ff2ad4', '#5a3a24', '#20283a'];
+export const SKINS = ['#f2d0b5', '#e0b08a', '#c68a5e', '#9a6340', '#6b4128', '#3f2617'];
+export const HAIRS: HairStyle[] = ['short', 'buzz', 'long', 'curly', 'braids', 'bun', 'bald'];
+export const TOPS: TopStyle[] = ['tee', 'hoodie', 'jacket', 'tank', 'suit', 'jersey'];
+export const BOTTOMS: BottomStyle[] = ['jeans', 'cargo', 'shorts', 'skirt', 'suit'];
+export const COLORS = ['#111111', '#f2f2f2', '#d9a740', '#c0c0c0', '#ff2a4a', '#ff7a1a', '#ffc21a', '#3ddc84', '#1ae0ff', '#2a7bff', '#8a2aff', '#ff2ad4', '#5a3a24', '#20283a'];
 
-function Swatches({ value, list, onChange }: { value: string; list: string[]; onChange: (c: string) => void }) {
+export function Swatches({ value, list, onChange }: { value: string; list: string[]; onChange: (c: string) => void }) {
   return (
     <div className="swatches" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))' }}>
       {list.map((c) => (

@@ -9,6 +9,7 @@ import { beat } from '../audio/beat';
 import { ensureShow } from '../ui/editor/actions';
 import { show } from '../ui/showControl';
 import { getArena } from '../data/arenas';
+import { finishCareerShow } from '../life/actions';
 
 let timers: number[] = [];
 const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
@@ -47,6 +48,7 @@ export function exitPerformer() {
   beat.stop();
   useShow.getState().clearOverride();
   useShow.getState().set({ hype: 0, phoneLights: false });
+  if (finishCareerShow()) return;
   useUI.getState().set({ screen: 'editor' });
 }
 

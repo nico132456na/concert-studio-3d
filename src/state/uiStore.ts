@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Vec3 } from '../types';
 
-export type Screen = 'menu' | 'arenas' | 'gallery' | 'projects' | 'editor' | 'live' | 'performer';
+export type Screen = 'menu' | 'arenas' | 'gallery' | 'projects' | 'editor' | 'live' | 'performer' | 'career' | 'life';
 export type Tool = 'select' | 'move' | 'rotate' | 'scale';
 export type LeftPanel = 'add' | 'layers' | null;
 export type RightTab = 'object' | 'material' | 'led' | 'light';

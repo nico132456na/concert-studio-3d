@@ -16,6 +16,8 @@ import { Avatar } from './Avatar';
 import { DEFAULT_LOOK } from '../performer/state';
 import { stepEngine } from './lightingEngine';
 import { useSettings, QUALITY } from '../state/settingsStore';
+import { useCareer } from '../life/careerStore';
+import { tierFor } from '../life/data';
 import { useUI } from '../state/uiStore';
 import { useProject } from '../state/projectStore';
 import { thumbnailSource } from '../storage/autosave';
@@ -138,6 +140,9 @@ function Scene({ mode, arenaId }: { mode: ViewportMode; arenaId: string }) {
   const savedCam = useProject((s) => s.project?.camera);
   const arena = getArena(arenaId);
   const q = QUALITY[quality];
+  const density = useSettings((s) => s.crowdDensity ?? 1);
+  const live = useCareer((s) => !!s.live);
+  const career = useCareer((s) => s.career);
   const editor = mode === 'editor';
   const performerLook = useProject((s) => s.project?.performer?.look) ?? DEFAULT_LOOK;
   const crowd = mode === 'live' || mode === 'performer' || mode === 'menu' || mode === 'preview' || (editor && (showCrowd || view === 'audience'));
@@ -171,7 +176,7 @@ function Scene({ mode, arenaId }: { mode: ViewportMode; arenaId: string }) {
       <ArenaModel arena={arena} />
       <StageObjects interactive={editor} shadows={q.shadows} />
       <FixtureRig hidden={editor && !showFixtures} interactive={editor} lightCount={q.lights} ceiling={arena.ceiling} shadows={q.shadows} segs={q.beamSegs} />
-      {crowd && <Audience arena={arena} count={mode === 'menu' ? Math.round(q.crowd * 0.6) : q.crowd} />}
+      {crowd && <Audience arena={arena} count={Math.round((mode === 'menu' ? q.crowd * 0.6 : q.crowd) * density * (live ? tierFor(career.xp, career.sandbox).crowdFill : 1))} />}
       <LowFog count={quality === 'low' ? 10 : 22} />
       {(mode === 'live' || mode === 'preview' || mode === 'performer') && <StageFx />}
       {editor && showGrid && (

@@ -185,6 +185,10 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
 
     /* -------------------------- crowd reaction -------------------------- */
     const onStage = !backstage && p.pos.y > 0.3;
+    if (onStage) {
+      p.stageTime += dt;
+      p.hypeSum += p.hype * dt;
+    }
     const front = crowdFront(arena);
     const near = onStage ? THREE.MathUtils.clamp(1 - Math.abs(front - p.pos.z) / 28, 0, 1) : 0;
     const show = useShow.getState();
@@ -238,8 +242,9 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
       camPos.set(p.pos.x + 1.5, p.pos.y + 0.4, p.pos.z + 4.5);
       look.set(p.pos.x, p.pos.y + 1.6, p.pos.z);
     } else {
-      let dist = 4.2 - p.camPitch * 1.2;
-      const up = 1.2 + p.camPitch * 2.4;
+      // wider framing out front so the stage, crowd and performer all read
+      let dist = (backstage ? 4.2 : 6.4) - p.camPitch * 1.2;
+      const up = (backstage ? 1.2 : 1.9) + p.camPitch * 2.4;
       // keep the camera inside backstage rooms
       if (backstage) {
         for (let i = 0; i < 12; i++) {

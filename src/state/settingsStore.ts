@@ -19,6 +19,8 @@ export interface Settings {
   envBright: number;
   shadow: number;
   outlines: boolean;
+  /** audience density multiplier */
+  crowdDensity: number;
 }
 
 const KEY = 'cs3d-settings';
@@ -38,6 +40,7 @@ const defaults: Settings = {
   envBright: 1,
   shadow: 0.7,
   outlines: true,
+  crowdDensity: 1,
 };
 
 function load(): Settings {

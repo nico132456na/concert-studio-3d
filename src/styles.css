@@ -385,3 +385,22 @@ button { font-family: inherit; color: inherit; }
 .cmp-table td { padding: 7px 8px; border-top: 1px solid var(--line); vertical-align: top; }
 .cmp-table th { border-top: 1px solid var(--line); }
 @media (max-width: 700px) { .cmp-table th { width: 110px; } .screen-head .btn { padding: 0 10px; } }
+
+/* ---------- Artist life & career ---------- */
+.life-hint { position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--safe-t) + 70px); z-index: 20; background: rgba(0,0,0,0.55); border-radius: 10px; padding: 8px 14px; font-size: 13px; color: var(--text-2); text-align: center; max-width: min(640px, 90vw); pointer-events: none; }
+.life-prompt { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 200px); z-index: 35; max-width: min(520px, 92vw); }
+.life-dialog { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 24px); z-index: 45; width: min(640px, 94vw); }
+.life-dialog .info-card { max-width: none; }
+.life-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 45; pointer-events: none; }
+.drive-hud { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 22px); z-index: 30; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.life-fade { position: absolute; inset: 0; background: #000; z-index: 60; pointer-events: none; transition: opacity 0.4s; }
+.life-flash { position: absolute; inset: 0; background: #fff; z-index: 55; pointer-events: none; transition: opacity 0.05s; }
+.progress { height: 8px; background: var(--panel-3); border-radius: 4px; overflow: hidden; }
+.progress > div { height: 100%; background: linear-gradient(90deg, #4da3ff, #ff2ad4); transition: width 0.15s; }
+.pick-list { display: flex; flex-direction: column; gap: 2px; max-height: 44vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
+.career-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.career-grid .card { cursor: default; margin: 0; }
+.unlock { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.unlock:first-of-type { border-top: none; }
+.unlock .grow { flex: 1; min-width: 0; }
+.unlock.locked { opacity: 0.5; }

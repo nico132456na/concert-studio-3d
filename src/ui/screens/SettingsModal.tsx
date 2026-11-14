@@ -33,6 +33,7 @@ export function SettingsModal() {
       <div className="hint" style={{ marginTop: 8 }}>
         Now using <b style={{ color: '#fff' }}>{QUALITY[s.effective].label}</b>. Auto lowers quality if the frame rate drops. High adds ambient occlusion, shadows and more real lights; Ultra doubles the crowd and lights.
       </div>
+      <Slider label="Crowd density" value={s.crowdDensity ?? 1} min={0.25} max={1.5} onChange={(v) => s.update({ crowdDensity: v })} format={(v) => `${Math.round(v * 100)}%`} />
       <Toggle label="Show performance monitor" value={s.showStats} onChange={(v) => s.update({ showStats: v })} />
       <div className="hint">
         {p.fps} FPS · {p.frameMs} ms/frame · {p.calls} draw calls · {(p.tris / 1000).toFixed(0)}k triangles

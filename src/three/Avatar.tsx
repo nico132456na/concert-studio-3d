@@ -14,7 +14,22 @@ function Mat({ color, rough = 0.7, metal = 0 }: { color: string; rough?: number;
  * Original procedural performer avatar. Limbs are separate pivots so walking, running,
  * dancing, waving, pointing and jumping are animated procedurally (no external assets).
  */
-export function Avatar({ look, followPlayer = true }: { look: AvatarLook; followPlayer?: boolean }) {
+/** Anything an avatar can be driven by (the player, or an NPC). */
+export interface AvatarDriver {
+  pos: THREE.Vector3;
+  yaw: number;
+  speed: number;
+  action: typeof player.action;
+  actionT: number;
+  phase: number;
+  onGround: boolean;
+}
+
+export function makeDriver(x = 0, z = 0, yaw = 0): AvatarDriver {
+  return { pos: new THREE.Vector3(x, 0, z), yaw, speed: 0, action: 'none', actionT: 0, phase: Math.random() * 6, onGround: true };
+}
+
+export function Avatar({ look, followPlayer = true, driver }: { look: AvatarLook; followPlayer?: boolean; driver?: AvatarDriver }) {
   const root = useRef<THREE.Group>(null);
   const hips = useRef<THREE.Group>(null);
   const torso = useRef<THREE.Group>(null);
@@ -82,7 +97,8 @@ export function Avatar({ look, followPlayer = true }: { look: AvatarLook; follow
 
   useFrame((_, dt) => {
     t.current += dt;
-    const p = player;
+    const p = driver ?? player;
+    if (driver) driver.actionT += dt;
     if (followPlayer && root.current) {
       root.current.position.copy(p.pos);
       root.current.rotation.y = p.yaw;

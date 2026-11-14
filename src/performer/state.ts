@@ -25,6 +25,9 @@ export const player = {
   liftStart: 0,
   liftFrom: 0,
   liftTo: 0,
+  /** seconds on stage & accumulated hype (career scoring) */
+  stageTime: 0,
+  hypeSum: 0,
 };
 
 /** Touch / keyboard input, written by the HUD and read by the controller. */
