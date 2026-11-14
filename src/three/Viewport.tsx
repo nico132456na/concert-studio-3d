@@ -134,6 +134,7 @@ function Scene({ mode, arenaId }: { mode: ViewportMode; arenaId: string }) {
   const showCrowd = useUI((s) => s.showCrowd);
   const view = useUI((s) => s.view);
   const lightEnv = useUI((s) => s.lightEnv);
+  const showFixtures = useUI((s) => s.showFixtures);
   const savedCam = useProject((s) => s.project?.camera);
   const arena = getArena(arenaId);
   const q = QUALITY[quality];
@@ -169,7 +170,7 @@ function Scene({ mode, arenaId }: { mode: ViewportMode; arenaId: string }) {
       {mode === 'performer' && <Avatar look={performerLook} />}
       <ArenaModel arena={arena} />
       <StageObjects interactive={editor} shadows={q.shadows} />
-      <FixtureRig interactive={editor} lightCount={q.lights} ceiling={arena.ceiling} shadows={q.shadows} segs={q.beamSegs} />
+      <FixtureRig hidden={editor && !showFixtures} interactive={editor} lightCount={q.lights} ceiling={arena.ceiling} shadows={q.shadows} segs={q.beamSegs} />
       {crowd && <Audience arena={arena} count={mode === 'menu' ? Math.round(q.crowd * 0.6) : q.crowd} />}
       <LowFog count={quality === 'low' ? 10 : 22} />
       {(mode === 'live' || mode === 'preview' || mode === 'performer') && <StageFx />}

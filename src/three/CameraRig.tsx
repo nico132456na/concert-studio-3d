@@ -49,6 +49,8 @@ function rawPose(id: CameraPresetId, a: ArenaDef): Pose {
       return { pos: [0, 3.6, -1], target: [0, 3, 40] };
     case 'overview':
       return { pos: [D * 0.85, D * 0.75, D * 1.1], target: [0, 0, (a.floor.zMin + a.floor.zMax) / 3] };
+    case 'cinematic':
+      return { pos: [-D * 0.32, D * 0.08 + 2, D * 0.42], target: [0, 6, -4] };
     case 'audience':
       return { pos: [3, 1.75, st.zMin + Math.min(26, (st.zMax - st.zMin) * 0.35)], target: [0, 6, -4] };
     case 'reset':
@@ -155,7 +157,8 @@ export function CameraRig({ arena, autoRotate = false, interactive = true, initi
     } else {
       if (camRequest.id === 'audience' && view !== 'audience') ui.set({ view: 'audience' });
       else if (camRequest.id !== 'audience' && view === 'audience') ui.set({ view: 'persp' });
-      to = presetPose(camRequest.id, arena);
+      to = camRequest.pose ?? presetPose(camRequest.id, arena);
+      if (camRequest.id === 'cinematic') useUI.getState().set({ lightEnv: 'cinematic' });
     }
     anim.current = {
       from: { pos: camera.position.toArray() as Vec3, target: c.target.toArray() as Vec3 },

@@ -289,13 +289,13 @@ function LightPool({ count, shadows }: { count: number; shadows: boolean }) {
   return null;
 }
 
-export function FixtureRig({ interactive, lightCount, ceiling, shadows, segs }: { interactive: boolean; lightCount: number; ceiling: number | null; shadows: boolean; segs: number }) {
+export function FixtureRig({ hidden = false, interactive, lightCount, ceiling, shadows, segs }: { hidden?: boolean; interactive: boolean; lightCount: number; ceiling: number | null; shadows: boolean; segs: number }) {
   const fixtures = useProject((s) => s.project?.fixtures);
   const selection = useUI((s) => s.selection);
   const screen = useUI((s) => s.screen);
   const sel = useMemo(() => new Set(selection), [selection]);
   return (
-    <group>
+    <group visible={!hidden}>
       {fixtures
         ?.filter((f) => !f.hidden)
         .map((f) => (

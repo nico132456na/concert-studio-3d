@@ -80,7 +80,6 @@ function Environment() {
     const src = arenaEnvScene();
     const env = pmrem.fromScene(src, 0.02).texture;
     scene.environment = env;
-    (scene as any).environmentIntensity = 1.1;
     return () => {
       scene.environment = null;
       env.dispose();
@@ -107,25 +106,41 @@ function AtmosphereSync({ arena }: { arena: ArenaDef }) {
       scene.fog = null;
     };
   }, [scene, arena]);
+  const fill = useRef<THREE.DirectionalLight>(null);
+  const gl = useThree((st) => st.gl);
   useFrame(() => {
     const ui = useUI.getState();
-    // lighting environment: work lights while building, darker for the show
+    const st = useSettings.getState();
+    // lighting environment: bright neutral work light while building, darker for the show
     const env = ui.screen === 'editor' ? ui.lightEnv : ui.screen === 'menu' || ui.screen === 'arenas' || ui.screen === 'gallery' ? 'preview' : ui.lightEnv === 'cinematic' ? 'cinematic' : 'concert';
     let house = engine.house;
-    if (env === 'construction') house = Math.max(house, 0.9);
+    if (env === 'construction') house = Math.max(house, 1);
     else if (env === 'concert') house *= 0.35;
     else if (env === 'cinematic') house *= 0.2;
-    if (hemi.current) hemi.current.intensity = Math.max(0.55, arena.ambient * 1.6 + house * 1.4);
-    if (dir.current) dir.current.intensity = house * (env === 'construction' ? 1.6 : 0.9) + (arena.sky === 'dusk' ? 0.15 : 0.05);
+    const work = env === 'construction';
+    if (hemi.current) {
+      hemi.current.intensity = (work ? 2.2 : Math.max(0.55, arena.ambient * 1.6 + house * 1.4)) * st.ambient;
+      hemi.current.color.set(work ? '#f2f4f8' : '#8aa0c8');
+      hemi.current.groundColor.set(work ? '#6a6a70' : '#1a1410');
+    }
+    if (dir.current) {
+      dir.current.intensity = (work ? 2.4 : house * 0.9 + (arena.sky === 'dusk' ? 0.15 : 0.05)) * st.ambient;
+      dir.current.color.set(work ? '#ffffff' : '#c8d4ff');
+      dir.current.shadow.intensity = st.shadow;
+    }
+    if (fill.current) fill.current.intensity = (work ? 1.4 : 0) * st.ambient;
+    (scene as any).environmentIntensity = (work ? 1.8 : env === 'preview' ? 1.2 : 0.9) * st.envBright;
+    gl.toneMappingExposure = (work ? 1.15 : env === 'cinematic' ? 0.95 : 1.05) * st.exposure;
     if (scene.fog instanceof THREE.FogExp2) {
       const size = Math.max(arena.floor.xMax - arena.floor.xMin, arena.floor.zMax - arena.floor.zMin);
-      scene.fog.density = (0.6 + engine.haze * 1.2) / Math.max(120, size * 3.2);
+      scene.fog.density = ((work ? 0.25 : 0.6) + engine.haze * (work ? 0.3 : 1.2)) / Math.max(120, size * 3.2);
     }
   });
   return (
     <>
       <hemisphereLight ref={hemi} args={['#8aa0c8', '#1a1410', 0.3]} />
       <directionalLight ref={dir} position={[30, 60, 50]} intensity={0.2} color="#c8d4ff" />
+      <directionalLight ref={fill} position={[-40, 30, 30]} intensity={0} color="#eef2ff" />
     </>
   );
 }

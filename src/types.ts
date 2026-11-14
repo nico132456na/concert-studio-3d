@@ -211,6 +211,7 @@ export interface Project {
   customPresets: LightPreset[];
   savedColors: string[];
   performer?: PerformerData;
+  savedCameras?: { id: string; name: string; pos: Vec3; target: Vec3 }[];
 }
 
 export interface ProjectMeta {

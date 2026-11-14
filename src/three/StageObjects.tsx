@@ -13,6 +13,7 @@ import { useMediaTexture } from './media';
 import { handleItemClick, handleItemPointerDown } from './interaction';
 import { useProject } from '../state/projectStore';
 import { useUI } from '../state/uiStore';
+import { useSettings } from '../state/settingsStore';
 import { fmt } from '../util/misc';
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
   interactive: boolean;
   showLabel: boolean;
   shadows: boolean;
+  outlines: boolean;
 }
 
 function LedSurface({ obj, geometry, side }: { obj: StageObject; geometry: THREE.BufferGeometry; side?: THREE.Side }) {
@@ -97,7 +99,18 @@ function Extras({ obj }: { obj: StageObject }) {
   return null;
 }
 
-export const StageObjectMesh = memo(function StageObjectMesh({ obj, selected, interactive, showLabel, shadows }: Props) {
+const edgeCache = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry>();
+/** Crease edges for construction outlines (box edges for very dense meshes). */
+function edgesFor(g: THREE.BufferGeometry) {
+  let e = edgeCache.get(g);
+  if (!e) {
+    e = g.getAttribute('position').count > 6000 ? unitBoxEdges : new THREE.EdgesGeometry(g, 28);
+    edgeCache.set(g, e);
+  }
+  return e;
+}
+
+export const StageObjectMesh = memo(function StageObjectMesh({ obj, selected, interactive, showLabel, shadows, outlines }: Props) {
   const geo = getGeometry(obj.kind, obj.size, obj.outline);
   const whole = ledWholeSurface(obj.kind) || obj.material.preset === 'led';
   const material = useMemo(() => buildMaterial(obj.material, obj.size, geo.mainBack ? THREE.BackSide : THREE.FrontSide), [obj.material, geo.mainBack, Math.round(obj.size[0]), Math.round(obj.size[1]), Math.round(obj.size[2])]);
@@ -133,6 +146,11 @@ export const StageObjectMesh = memo(function StageObjectMesh({ obj, selected, in
           <mesh geometry={geo.main} material={material} castShadow={shadows && !isGlass} receiveShadow={shadows} renderOrder={isGlass ? 2 : 0} />
         )}
         {geo.screen && obj.led && !whole && <LedSurface obj={obj} geometry={geo.screen} />}
+        {outlines && !selected && (
+          <lineSegments geometry={edgesFor(geo.main)} raycast={() => null}>
+            <lineBasicMaterial color="#9aa3b5" transparent opacity={0.55} />
+          </lineSegments>
+        )}
         {selected && (
           <lineSegments geometry={unitBoxEdges} scale={[1.02, 1.02, 1.02]} raycast={() => null}>
             <lineBasicMaterial color={obj.locked ? '#ff9a3c' : '#4da3ff'} depthTest={false} transparent opacity={0.95} />
@@ -156,14 +174,17 @@ export function StageObjects({ interactive, shadows }: { interactive: boolean; s
   const objects = useProject((s) => s.project?.objects);
   const selection = useUI((s) => s.selection);
   const screen = useUI((s) => s.screen);
+  const lightEnv = useUI((s) => s.lightEnv);
+  const outlinePref = useSettings((s) => s.outlines);
   const sel = useMemo(() => new Set(selection), [selection]);
   if (!objects) return null;
+  const outlines = screen === 'editor' && lightEnv === 'construction' && outlinePref;
   const showSel = screen === 'editor';
   const single = selection.length === 1;
   return (
     <group>
       {objects.filter((o) => !o.hidden).map((o) => (
-        <StageObjectMesh key={o.id} obj={o} selected={showSel && sel.has(o.id)} interactive={interactive} showLabel={showSel && single} shadows={shadows} />
+        <StageObjectMesh key={o.id} obj={o} selected={showSel && sel.has(o.id)} interactive={interactive} showLabel={showSel && single} shadows={shadows} outlines={outlines} />
       ))}
     </group>
   );

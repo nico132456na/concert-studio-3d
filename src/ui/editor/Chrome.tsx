@@ -8,7 +8,12 @@ import { useSave, saveNow } from '../../storage/autosave';
 import { useSettings } from '../../state/settingsStore';
 import { goHome, enterLive } from '../flow';
 import { enterPerformer } from '../../performer/flow';
-import { PromptModal, Toggle, Seg } from '../components';
+import { PromptModal, Toggle, Seg, Slider } from '../components';
+import { ctx } from '../../three/interaction';
+import * as THREE from 'three';
+import type { Vec3 } from '../../types';
+import { uid } from '../../util/misc';
+import { toast } from '../../state/uiStore';
 import { randomize } from './actions';
 
 export function SaveIndicator() {
@@ -171,7 +176,53 @@ const PRESETS: { id: CameraPresetId; label: string }[] = [
   { id: 'performer', label: 'Performer' },
   { id: 'overview', label: 'Full Arena' },
   { id: 'audience', label: 'Audience' },
+  { id: 'cinematic', label: 'Cinematic' },
 ];
+
+function SavedCameras() {
+  const cams = useProject((s) => s.project?.savedCameras ?? []);
+  const requestCamera = useUI((s) => s.requestCamera);
+  const save = () => {
+    const cam = ctx.camera;
+    const t = ctx.controls?.target as THREE.Vector3 | undefined;
+    if (!cam || !t) return;
+    const r = (v: number) => Math.round(v * 100) / 100;
+    const entry = { id: uid('cam'), name: `View ${cams.length + 1}`, pos: cam.position.toArray().map(r) as Vec3, target: t.toArray().map(r) as Vec3 };
+    useProject.getState().mutate((p) => ({ ...p, savedCameras: [...(p.savedCameras ?? []), entry] }));
+    toast('Camera view saved');
+  };
+  return (
+    <>
+      <div className="section-title">My saved views</div>
+      <div className="row wrap">
+        {cams.map((c) => (
+          <div key={c.id} className="row" style={{ gap: 2 }}>
+            <button className="btn small" onClick={() => requestCamera('custom', undefined, undefined, { pos: c.pos, target: c.target })}>{c.name}</button>
+            <button className="icon-btn" aria-label="Delete view" onClick={() => useProject.getState().mutate((p) => ({ ...p, savedCameras: (p.savedCameras ?? []).filter((x) => x.id !== c.id) }))}>×</button>
+          </div>
+        ))}
+        <button className="btn small" onClick={save}>+ Save this view</button>
+      </div>
+    </>
+  );
+}
+
+function LightControls() {
+  const st = useSettings();
+  const ui = useUI();
+  return (
+    <>
+      <div className="section-title">Visibility & lighting</div>
+      <Slider label="Exposure" value={st.exposure} min={0.4} max={2.2} onChange={(v) => st.update({ exposure: v })} format={(v) => `${v.toFixed(2)}×`} />
+      <Slider label="Ambient light" value={st.ambient} min={0.2} max={2.5} onChange={(v) => st.update({ ambient: v })} format={(v) => `${Math.round(v * 100)}%`} />
+      <Slider label="Environment brightness" value={st.envBright} min={0} max={2.5} onChange={(v) => st.update({ envBright: v })} format={(v) => `${Math.round(v * 100)}%`} />
+      <Slider label="Shadow strength" value={st.shadow} min={0} max={1} onChange={(v) => st.update({ shadow: v })} format={(v) => `${Math.round(v * 100)}%`} />
+      <Toggle label="Outline objects in Work light" value={st.outlines} onChange={(v) => st.update({ outlines: v })} />
+      <Toggle label="Show concert light beams" value={ui.showFixtures} onChange={(v) => ui.set({ showFixtures: v })} />
+      <button className="btn small" onClick={() => st.update({ exposure: 1, ambient: 1, envBright: 1, shadow: 0.7 })}>Reset lighting</button>
+    </>
+  );
+}
 
 export function CameraMenu() {
   const set = useUI((s) => s.set);
@@ -193,7 +244,9 @@ export function CameraMenu() {
             </button>
           ))}
         </div>
+        <SavedCameras />
         <div className="hint" style={{ margin: '12px 0' }}>Free camera: one finger rotates, two fingers pan, pinch zooms. Double-tap an object to focus on it.</div>
+        <LightControls />
         <div className="field">
           <div className="field-label">Lighting environment</div>
           <Seg

@@ -13,6 +13,12 @@ export interface Settings {
   music: boolean;
   volume: number;
   tutorialDone: boolean;
+  /** construction / viewing light controls */
+  exposure: number;
+  ambient: number;
+  envBright: number;
+  shadow: number;
+  outlines: boolean;
 }
 
 const KEY = 'cs3d-settings';
@@ -27,6 +33,11 @@ const defaults: Settings = {
   music: true,
   volume: 0.6,
   tutorialDone: false,
+  exposure: 1,
+  ambient: 1,
+  envBright: 1,
+  shadow: 0.7,
+  outlines: true,
 };
 
 function load(): Settings {

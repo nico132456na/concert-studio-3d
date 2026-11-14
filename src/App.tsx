@@ -4,7 +4,7 @@ import { useSettings } from './state/settingsStore';
 import { startAutosave } from './storage/autosave';
 import { MainMenu } from './ui/screens/MainMenu';
 import { ArenaSelect } from './ui/screens/ArenaSelect';
-import { Gallery } from './ui/screens/Gallery';
+import { Archive } from './ui/screens/Archive';
 import { Projects } from './ui/screens/Projects';
 import { SettingsModal, StatsOverlay } from './ui/screens/SettingsModal';
 import { Editor } from './ui/editor/Editor';
@@ -58,7 +58,7 @@ export default function App() {
       <ErrorBoundary label="Concert Studio" onReset={() => goHome()}>
         {screen === 'menu' && <MainMenu />}
         {screen === 'arenas' && <ArenaSelect />}
-        {screen === 'gallery' && <Gallery />}
+        {screen === 'gallery' && <Archive />}
         {screen === 'projects' && <Projects />}
         {screen === 'editor' && <Editor />}
         {screen === 'live' && <LiveMode />}
