@@ -8,7 +8,10 @@ import { useProject } from '../state/projectStore';
 import { useShow, type CrowdMoment } from '../state/showStore';
 import { rng } from '../util/misc';
 import { engine } from './lightingEngine';
-import { player } from '../performer/state';
+import { player, DEFAULT_LOOK } from '../performer/state';
+import { useSettings } from '../state/settingsStore';
+import { Person, type Gesture } from './people/Person';
+import type { AvatarLook } from '../types';
 
 /*
  * Instanced audience. Each person is a low-poly humanoid (legs, shoes, torso, sleeves, forearms, hands,
@@ -329,6 +332,8 @@ interface Props {
 
 export function Audience({ arena, count }: Props) {
   const objects = useProject((s) => s.project?.objects);
+  const quality = useSettings((s) => s.effective);
+  const frontRow = quality === 'low' ? 0 : quality === 'medium' ? 8 : quality === 'high' ? 16 : 24;
   const footKey = useMemo(
     () =>
       (objects ?? [])
@@ -395,6 +400,24 @@ export function Audience({ arena, count }: Props) {
         if (r() < 0.25) phonePts.push(x, y + 1.95, z);
       }
     }
+    // front row: the closest standing spots become real animated people (removed from the instanced crowd)
+    const fans: { x: number; z: number; yaw: number; seed: number }[] = [];
+    if (frontRow > 0) {
+      const order = stand.front.map((f, i) => [f, i] as [number, number]).sort((a, b) => b[0] - a[0]);
+      const pos = new THREE.Vector3(), qq = new THREE.Quaternion(), sc = new THREE.Vector3(), e = new THREE.Euler();
+      const taken = new Set<number>();
+      for (const [, i] of order) {
+        if (fans.length >= frontRow) break;
+        stand.mats[i].decompose(pos, qq, sc);
+        if (fans.some((f) => Math.hypot(f.x - pos.x, f.z - pos.z) < 0.85)) continue;
+        e.setFromQuaternion(qq, 'YXZ');
+        fans.push({ x: pos.x, z: pos.z, yaw: e.y, seed: i });
+        taken.add(i);
+      }
+      const keep = stand.mats.map((_, i) => !taken.has(i));
+      stand.mats = stand.mats.filter((_, i) => keep[i]);
+      stand.front = stand.front.filter((_, i) => keep[i]);
+    }
     const uniforms = { uTime: { value: 0 }, uEnergy: { value: 0.2 }, uBeat: { value: 0 }, uMoment: { value: 0 }, uMomentK: { value: 0 }, uPerf: { value: new THREE.Vector4() } };
     const mat = crowdMaterial(uniforms);
     const hi = buildInstances(stand, 'hi', 77, mat);
@@ -423,9 +446,9 @@ export function Audience({ arena, count }: Props) {
     const flash = new THREE.Points(fg, new THREE.PointsMaterial({ map: new THREE.CanvasTexture(fc), color: '#ffffff', size: 1.1, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
     flash.frustumCulled = false;
     flash.raycast = () => {};
-    return { hi, lo, signs, phones, flash, phonePts, uniforms, mat };
+    return { hi, lo, signs, phones, flash, phonePts, uniforms, mat, fans };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arena, count, footKey]);
+  }, [arena, count, footKey, frontRow]);
 
   useEffect(
     () => () => {
@@ -492,6 +515,58 @@ export function Audience({ arena, count }: Props) {
       <primitive object={built.signs.mesh} />
       <primitive object={built.phones} />
       <primitive object={built.flash} />
+      {built.fans.map((f) => (
+        <FrontRowFan key={f.seed} {...f} />
+      ))}
     </>
   );
+}
+
+
+/* ---------------- real front-row fans ---------------- */
+const FAN_HAIR: AvatarLook['hair'][] = ['short', 'long', 'bun', 'buzz', 'long', 'short', 'bald'];
+const FAN_TOPS: AvatarLook['top'][] = ['tee', 'tee', 'hoodie', 'jacket', 'tank', 'jersey'];
+const FAN_BOTTOM: AvatarLook['bottom'][] = ['jeans', 'jeans', 'cargo', 'shorts'];
+const PERSONAL: Gesture[] = ['handsUp', 'clap', 'phone', 'wave', 'none', 'handsUp'];
+const MOMENT_GESTURE: Record<CrowdMoment, Gesture | null> = { none: null, handsUp: 'handsUp', cheer: 'handsUp', wave: 'wave', sing: 'wave', phones: 'phone', clap: 'clap' };
+
+function FrontRowFan({ x, z, yaw, seed }: { x: number; z: number; yaw: number; seed: number }) {
+  const look = useMemo<AvatarLook>(() => {
+    const r = rng(seed * 7 + 3);
+    const pick = <T,>(a: T[]) => a[Math.floor(r() * a.length)];
+    const female = r() < 0.5;
+    return {
+      ...DEFAULT_LOOK,
+      body: female ? 'female' : 'male',
+      skin: pick(SKINS),
+      hair: pick(FAN_HAIR),
+      hairColor: pick(HAIRS),
+      top: pick(FAN_TOPS),
+      topColor: pick(TOPS),
+      bottom: pick(FAN_BOTTOM),
+      bottomColor: pick(BOTTOMS),
+      shoes: r() < 0.6 ? '#f2f2f2' : '#141414',
+      glasses: r() < 0.15,
+      chain: r() < 0.1,
+      cap: r() < 0.2,
+      gloves: false,
+      beard: !female && r() < 0.3,
+      height: 0.95 + r() * 0.1,
+    };
+  }, [seed]);
+  const style = useMemo(() => {
+    const r = rng(seed * 13 + 1);
+    return { g: PERSONAL[Math.floor(r() * PERSONAL.length)], dance: r() < 0.3, phase: r() * 10 };
+  }, [seed]);
+  const gesture = () => {
+    const show = useShow.getState();
+    const cm = show.crowdMoment;
+    const age = performance.now() / 1000 - cm.t;
+    if (cm.kind !== 'none' && age < 6.5) return MOMENT_GESTURE[cm.kind] ?? 'none';
+    const hype = Math.max(show.hype, show.playing ? 0.6 : 0.2);
+    // excitement comes in waves; the hotter the show, the more often they're up
+    const on = Math.sin(performance.now() / 1000 * 0.6 + style.phase) > 0.6 - hype * 1.2;
+    return on ? style.g : 'none';
+  };
+  return <Person look={look} followPlayer={false} position={[x, 0, z]} yaw={yaw} role={style.dance ? 'dance' : 'fan'} gesture={gesture} />;
 }

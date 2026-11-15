@@ -6,7 +6,7 @@ import { useLife, interactables, walkArea, car } from '../../life/state';
 import { useCareer } from '../../life/careerStore';
 import { player, input } from '../../performer/state';
 import { useSettings, QUALITY } from '../../state/settingsStore';
-import { Avatar } from '../Avatar';
+import { Person } from '../people/Person';
 import { Home, roomAt } from './Home';
 import { City } from './City';
 import { Arrival, CARPET } from './Arrival';
@@ -183,7 +183,7 @@ function Scene() {
       {phase === 'home' && <Home />}
       {phase !== 'home' && <City driving={phase === 'drive'} />}
       {phase === 'arrival' && <Arrival />}
-      {phase !== 'drive' && <Avatar look={look} />}
+      {phase !== 'drive' && <Person look={look} />}
       <LifeRig key={phase} />
     </>
   );

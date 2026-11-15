@@ -31,6 +31,8 @@ function Closet() {
       </div>
       <div className="panel-body">
         <div className="hint" style={{ marginBottom: 10 }}>This look follows you everywhere — home, the red carpet and on stage.</div>
+        <div className="section-title">Body</div>
+        <Seg value={look.body ?? 'male'} onChange={(v) => upd({ body: v as 'male' | 'female' })} options={[{ v: 'male', label: 'Masculine' }, { v: 'female', label: 'Feminine' }]} />
         <div className="section-title">Skin</div>
         <Swatches value={look.skin} list={SKINS} onChange={(c) => upd({ skin: c })} />
         <div className="section-title">Hair</div>
@@ -49,6 +51,7 @@ function Closet() {
         <Swatches value={look.shoes} list={COLORS} onChange={(c) => upd({ shoes: c })} />
         <div className="section-title">Accessories</div>
         <Toggle label="Sunglasses" value={look.glasses} onChange={(v) => upd({ glasses: v })} />
+        {(look.body ?? 'male') === 'male' && <Toggle label="Beard" value={!!look.beard} onChange={(v) => upd({ beard: v })} />}
         <Toggle label="Gold chain" value={look.chain} onChange={(v) => upd({ chain: v })} />
         <Toggle label="Cap" value={look.cap} onChange={(v) => upd({ cap: v })} />
         <Toggle label="Gloves" value={look.gloves} onChange={(v) => upd({ gloves: v })} />

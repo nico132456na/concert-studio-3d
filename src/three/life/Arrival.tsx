@@ -10,7 +10,8 @@ import { player } from '../../performer/state';
 import { rng } from '../../util/misc';
 import { DROP, P, textTexture } from './City';
 import { Vehicle } from './Vehicle';
-import { Avatar, makeDriver } from '../Avatar';
+import { makeDriver } from '../Avatar';
+import { Person } from '../people/Person';
 import { NPC_LOOKS, followStep } from './Npc';
 
 const noRay = () => null;
@@ -54,7 +55,7 @@ function Fans({ count }: { count: number }) {
     const ph: number[] = [];
     for (let i = 0; i < n; i++) {
       const side = i % 2 ? 1 : -1;
-      const row = Math.floor(r() * 3);
+      const row = 1 + Math.floor(r() * 2);
       const x = CARPET.x + side * (4.2 + row * 0.75 + r() * 0.3);
       const z = CARPET.z0 + 2 + r() * (CARPET.z1 - CARPET.z0 - 6);
       q.setFromAxisAngle(up, side > 0 ? -Math.PI / 2 + (r() - 0.5) * 0.6 : Math.PI / 2 + (r() - 0.5) * 0.6);
@@ -140,7 +141,7 @@ function Paparazzi({ count }: { count: number }) {
     return new THREE.CanvasTexture(c);
   }, []);
   useEffect(() => () => flashTex.dispose(), [flashTex]);
-  const look = useMemo(() => ({ ...NPC_LOOKS.manager, top: 'jacket' as const, topColor: '#3a3a3e', glasses: false }), []);
+  const look = useMemo(() => ({ ...NPC_LOOKS.manager, top: 'jacket' as const, topColor: '#3a3a3e', glasses: false, cap: true }), []);
   const drivers = useMemo(() => people.map((p) => makeDriver(p.x, p.z, p.side > 0 ? -Math.PI / 2 : Math.PI / 2)), [people]);
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
@@ -176,7 +177,7 @@ function Paparazzi({ count }: { count: number }) {
     <>
       {drivers.map((d, i) => (
         <group key={i}>
-          <Avatar look={look} driver={d} />
+          <Person look={look} driver={d} gesture={() => 'phone'} />
           <mesh ref={(m) => (sprites.current[i] = m)} raycast={noRay} visible={false}>
             <planeGeometry args={[1, 1]} />
             <meshBasicMaterial map={flashTex} transparent depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
@@ -203,7 +204,7 @@ function SecurityDetail({ n }: { n: number }) {
   return (
     <>
       {drivers.map((d, i) => (
-        <Avatar key={i} look={i % 2 ? NPC_LOOKS.security2 : NPC_LOOKS.security} driver={d} />
+        <Person key={i} look={i % 2 ? NPC_LOOKS.security2 : NPC_LOOKS.security} driver={d} role="arms" />
       ))}
     </>
   );
@@ -281,7 +282,8 @@ export function Arrival() {
       {Array.from({ length: tier.escorts }, (_, i) => (
         <Vehicle key={i} def={VEHICLE_BY_ID.suv} color="#0b0b0d" position={[DROP.x - 9 * (i + 1), 0, 4 * P + 2.2]} rotation={[0, Math.PI / 2, 0]} lights />
       ))}
-      <Fans count={tier.fans} />
+      {tier.fans > 20 && <Fans count={tier.fans - 20} />}
+      <BarricadeFans count={Math.min(20, tier.fans)} />
       <Paparazzi count={tier.paparazzi} />
       <SecurityDetail n={tier.security} />
       <hemisphereLight args={['#4a5a8a', '#1a1a20', 0.8]} />
@@ -301,4 +303,61 @@ function FlashSync() {
     if (ui.flashes !== on) ui.set({ flashes: on });
   });
   return null;
+}
+
+
+/* real people lining the barricades */
+const FAN_SKINS = ['#f2d0b5', '#e0b08a', '#c68a5e', '#9a6340', '#6b4128', '#3f2617'];
+const FAN_COLORS = ['#ff2a4a', '#f2f2f2', '#111111', '#2a7bff', '#ffc21a', '#8a2aff', '#3ddc84', '#ff7a1a', '#20283a', '#ff6b9d'];
+function BarricadeFans({ count }: { count: number }) {
+  const fans = useMemo(() => {
+    const r = rng(404);
+    const pick = <T,>(a: T[]) => a[Math.floor(r() * a.length)];
+    return Array.from({ length: count }, (_, i) => {
+      const side = i % 2 ? 1 : -1;
+      const z = CARPET.z0 + 3 + Math.floor(i / 2) * ((CARPET.z1 - CARPET.z0 - 8) / Math.max(1, Math.ceil(count / 2) - 1)) + (r() - 0.5) * 0.6;
+      const female = r() < 0.5;
+      return {
+        x: CARPET.x + side * (4.0 + r() * 0.2),
+        z,
+        yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2,
+        style: (['phone', 'wave', 'handsUp', 'phone'] as const)[Math.floor(r() * 4)],
+        look: {
+          ...NPC_LOOKS.manager,
+          body: (female ? 'female' : 'male') as 'female' | 'male',
+          skin: pick(FAN_SKINS),
+          hair: pick(['short', 'long', 'bun', 'buzz', 'long'] as const),
+          hairColor: pick(['#111111', '#4a2e1a', '#e8d08a', '#a0703c', '#1a1410']),
+          top: pick(['tee', 'hoodie', 'jacket', 'tee'] as const),
+          topColor: pick(FAN_COLORS),
+          bottom: pick(['jeans', 'cargo', 'jeans'] as const),
+          bottomColor: pick(['#20283a', '#111111', '#3a3a3e']),
+          shoes: r() < 0.6 ? '#f2f2f2' : '#141414',
+          glasses: false,
+          cap: r() < 0.25,
+          beard: !female && r() < 0.3,
+          height: 0.95 + r() * 0.1,
+        },
+      };
+    });
+  }, [count]);
+  return (
+    <>
+      {fans.map((f, i) => (
+        <Person
+          key={i}
+          look={f.look}
+          followPlayer={false}
+          position={[f.x, 0.18, f.z]}
+          yaw={f.yaw}
+          gesture={() => {
+            // the closer the artist, the louder the reaction
+            const d = Math.hypot(player.pos.x - f.x, player.pos.z - f.z);
+            if (d < 7) return f.style === 'phone' && d > 3 ? 'phone' : 'handsUp';
+            return Math.sin(performance.now() / 900 + i) > 0.3 ? f.style : 'none';
+          }}
+        />
+      ))}
+    </>
+  );
 }

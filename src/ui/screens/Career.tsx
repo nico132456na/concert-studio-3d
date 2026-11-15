@@ -7,7 +7,7 @@ import { TIERS, HOMES, VEHICLES, GENRES, tierIndex, unlocked } from '../../life/
 import { lifeActions } from '../../life/actions';
 import { ARENAS, getArena } from '../../data/arenas';
 import { ARCHIVE_ARTISTS } from '../../data/archive';
-import { Avatar } from '../../three/Avatar';
+import { Person } from '../../three/people/Person';
 import { ErrorBoundary, Modal } from '../components';
 import { Swatches, SKINS, HAIRS, TOPS, COLORS } from '../performer/PerformerMode';
 import { ShowPicker } from '../life/ShowPicker';
@@ -17,11 +17,11 @@ function AvatarPreview({ look }: { look: AvatarLook }) {
   return (
     <div style={{ height: 220, borderRadius: 14, overflow: 'hidden', background: 'radial-gradient(circle at 50% 30%, #2a3040, #0d0e12)' }}>
       <ErrorBoundary label="Avatar">
-        <Canvas camera={{ position: [0, 1.25, 3.1], fov: 38 }} dpr={[1, 2]}>
+        <Canvas camera={{ position: [0, 1.15, 3.6], fov: 34 }} dpr={[1, 2]} onCreated={({ camera }) => camera.lookAt(0, 1, 0)}>
           <hemisphereLight args={['#ffffff', '#404050', 1.6]} />
           <directionalLight position={[2, 4, 3]} intensity={1.6} />
           <group position={[0, -0.05, 0]}>
-            <Avatar look={look} followPlayer={false} />
+            <Person look={look} followPlayer={false} role="dance" />
           </group>
         </Canvas>
       </ErrorBoundary>

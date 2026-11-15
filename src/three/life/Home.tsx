@@ -223,10 +223,10 @@ export function Home() {
         <Vehicle key={v} def={VEHICLE_BY_ID[v]} color={career.vehicleColors[v] ?? VEHICLE_BY_ID[v].colors[0]} position={[GARAGE_SLOTS[i], 0, 1.5]} lights={career.vehicle === v} />
       ))}
       {/* people */}
-      <Npc look={NPC_LOOKS.manager} x={-3.8} z={-1.5} yaw={0.6} />
-      <Npc look={NPC_LOOKS.assistant} x={4.6} z={-4.3} yaw={-0.4} />
+      <Npc look={NPC_LOOKS.manager} x={-3.8} z={-1.5} yaw={0.6} role="talk" />
+      <Npc look={NPC_LOOKS.assistant} x={4.6} z={-4.3} yaw={-0.4} role="phone" />
       {Array.from({ length: Math.min(2, securityCount) }, (_, i) => (
-        <Npc key={i} look={i ? NPC_LOOKS.security2 : NPC_LOOKS.security} x={9.5 + i * 1.2} z={-3.5} yaw={Math.PI} />
+        <Npc key={i} look={i ? NPC_LOOKS.security2 : NPC_LOOKS.security} x={9.5 + i * 1.2} z={-3.5} yaw={Math.PI} role="arms" />
       ))}
       {/* outside view */}
       <Outside view={home.view} />

@@ -77,6 +77,9 @@ export interface AvatarLook {
   cap: boolean;
   gloves: boolean;
   height: number; // scale 0.9..1.1
+  /** realistic body model (defaults to masculine) */
+  body?: 'male' | 'female';
+  beard?: boolean;
 }
 
 export interface PerformerData {

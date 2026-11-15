@@ -12,7 +12,7 @@ import { LowFog, PostFX, StageFx } from './Effects';
 import { SoundCoverage } from './SoundCoverage';
 import { PerformerRig } from './PerformerRig';
 import { Backstage } from './Backstage';
-import { Avatar } from './Avatar';
+import { Person } from './people/Person';
 import { DEFAULT_LOOK } from '../performer/state';
 import { stepEngine } from './lightingEngine';
 import { useSettings, QUALITY } from '../state/settingsStore';
@@ -174,7 +174,7 @@ function Scene({ mode, arenaId }: { mode: ViewportMode; arenaId: string }) {
       {editor && <ThumbnailBridge />}
       {mode === 'performer' ? <PerformerRig arena={arena} /> : <CameraRig arena={arena} autoRotate={mode === 'menu' || mode === 'preview'} initial={initial} />}
       {mode === 'performer' && <Backstage />}
-      {mode === 'performer' && <Avatar look={performerLook} />}
+      {mode === 'performer' && <Person look={performerLook} />}
       <ArenaModel arena={arena} />
       <StageObjects interactive={editor} shadows={q.shadows} />
       <FixtureRig hidden={editor && !showFixtures} interactive={editor} lightCount={q.lights} ceiling={arena.ceiling} shadows={q.shadows} segs={q.beamSegs} />

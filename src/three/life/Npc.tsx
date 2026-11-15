@@ -1,19 +1,20 @@
 import { useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { AvatarLook } from '../../types';
-import { Avatar, makeDriver, type AvatarDriver } from '../Avatar';
+import { makeDriver, type AvatarDriver } from '../Avatar';
+import { Person, type Role } from '../people/Person';
 import { player } from '../../performer/state';
 import { DEFAULT_LOOK } from '../../performer/state';
 
 export const NPC_LOOKS: Record<string, AvatarLook> = {
-  manager: { ...DEFAULT_LOOK, skin: '#e0b08a', hair: 'short', hairColor: '#4a2e1a', top: 'suit', topColor: '#2a2f3a', bottom: 'suit', bottomColor: '#2a2f3a', shoes: '#111111', glasses: true, chain: false, cap: false, gloves: false, height: 1 },
-  assistant: { ...DEFAULT_LOOK, skin: '#9a6340', hair: 'bun', hairColor: '#1a1410', top: 'jacket', topColor: '#d9a740', bottom: 'jeans', bottomColor: '#20283a', shoes: '#f2f2f2', glasses: false, chain: false, cap: false, gloves: false, height: 0.95 },
-  security: { ...DEFAULT_LOOK, skin: '#6b4128', hair: 'buzz', hairColor: '#111111', top: 'suit', topColor: '#0b0b0d', bottom: 'suit', bottomColor: '#0b0b0d', shoes: '#0b0b0d', glasses: true, chain: false, cap: false, gloves: false, height: 1.08 },
-  security2: { ...DEFAULT_LOOK, skin: '#f2d0b5', hair: 'bald', hairColor: '#111111', top: 'suit', topColor: '#0b0b0d', bottom: 'suit', bottomColor: '#0b0b0d', shoes: '#0b0b0d', glasses: true, chain: false, cap: false, gloves: false, height: 1.06 },
+  manager: { ...DEFAULT_LOOK, skin: '#e0b08a', hair: 'short', hairColor: '#4a2e1a', top: 'suit', topColor: '#2a2f3a', bottom: 'suit', bottomColor: '#2a2f3a', shoes: '#111111', glasses: true, chain: false, cap: false, gloves: false, height: 1, body: 'male' },
+  assistant: { ...DEFAULT_LOOK, skin: '#9a6340', hair: 'bun', hairColor: '#1a1410', top: 'jacket', topColor: '#d9a740', bottom: 'jeans', bottomColor: '#20283a', shoes: '#f2f2f2', glasses: false, chain: false, cap: false, gloves: false, height: 1, body: 'female' },
+  security: { ...DEFAULT_LOOK, skin: '#6b4128', hair: 'buzz', hairColor: '#111111', top: 'suit', topColor: '#0b0b0d', bottom: 'suit', bottomColor: '#0b0b0d', shoes: '#0b0b0d', glasses: true, chain: false, cap: false, gloves: false, height: 1.04, body: 'male' },
+  security2: { ...DEFAULT_LOOK, skin: '#f2d0b5', hair: 'bald', hairColor: '#111111', top: 'suit', topColor: '#0b0b0d', bottom: 'suit', bottomColor: '#0b0b0d', shoes: '#0b0b0d', glasses: true, chain: false, cap: false, gloves: false, height: 1.02, body: 'male', beard: true },
 };
 
 /** A standing character who turns to face the player when they come close. */
-export function Npc({ look, x, z, yaw = 0, action = 'none', driver }: { look: AvatarLook; x: number; z: number; yaw?: number; action?: AvatarDriver['action']; driver?: AvatarDriver }) {
+export function Npc({ look, x, z, yaw = 0, action = 'none', driver, role = 'free' }: { look: AvatarLook; x: number; z: number; yaw?: number; action?: AvatarDriver['action']; driver?: AvatarDriver; role?: Role }) {
   const d = useMemo(() => driver ?? makeDriver(x, z, yaw), [driver, x, z, yaw]);
   useFrame((_, dt) => {
     if (driver) return;
@@ -24,7 +25,7 @@ export function Npc({ look, x, z, yaw = 0, action = 'none', driver }: { look: Av
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     d.yaw += diff * Math.min(1, dt * 4);
   });
-  return <Avatar look={look} driver={d} />;
+  return <Person look={look} driver={d} role={role} />;
 }
 
 /** Characters that follow the player at fixed offsets (security detail). */
