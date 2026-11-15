@@ -32,7 +32,7 @@ function tag(g: THREE.BufferGeometry, part: number, side = 0, hairKind = -1) {
 const cyl = (rt: number, rb: number, h: number, seg: number) => new THREE.CylinderGeometry(rt, rb, h, seg, 1, false);
 
 function personGeo(lod: 'hi' | 'lo') {
-  const seg = lod === 'hi' ? 7 : 5;
+  const seg = lod === 'hi' ? 6 : 5;
   const parts: THREE.BufferGeometry[] = [];
   if (lod === 'hi') {
     for (const sx of [-1, 1]) {
@@ -48,12 +48,12 @@ function personGeo(lod: 'hi' | 'lo') {
   parts.push(tag(new THREE.SphereGeometry(0.2, seg + 1, 3, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.35, 0.62).translate(0, 1.45, 0), P.top));
   // neck + head
   parts.push(tag(cyl(0.045, 0.05, 0.1, 5).translate(0, 1.52, 0), P.skin));
-  parts.push(tag(new THREE.SphereGeometry(0.105, lod === 'hi' ? 10 : 6, lod === 'hi' ? 8 : 4).scale(0.95, 1.12, 1).translate(0, 1.65, 0), P.skin));
+  parts.push(tag(new THREE.SphereGeometry(0.105, lod === 'hi' ? 8 : 6, lod === 'hi' ? 6 : 4).scale(0.95, 1.12, 1).translate(0, 1.65, 0), P.skin));
   // hair: 0 short, 1 long, 2 cap (hidden per instance in the shader when not selected)
-  parts.push(tag(new THREE.SphereGeometry(0.112, lod === 'hi' ? 10 : 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.55).scale(0.97, 1.05, 1.03).translate(0, 1.67, -0.005), P.hair, 0, 0));
-  parts.push(tag(new THREE.SphereGeometry(0.118, lod === 'hi' ? 10 : 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.6).scale(1, 1.08, 1.05).translate(0, 1.665, -0.01), P.hair, 0, 1));
+  parts.push(tag(new THREE.SphereGeometry(0.112, lod === 'hi' ? 8 : 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.55).scale(0.97, 1.05, 1.03).translate(0, 1.67, -0.005), P.hair, 0, 0));
+  parts.push(tag(new THREE.SphereGeometry(0.118, lod === 'hi' ? 8 : 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.6).scale(1, 1.08, 1.05).translate(0, 1.665, -0.01), P.hair, 0, 1));
   if (lod === 'hi') parts.push(tag(new THREE.BoxGeometry(0.2, 0.3, 0.08).translate(0, 1.5, -0.08), P.hair, 0, 1));
-  parts.push(tag(new THREE.SphereGeometry(0.115, lod === 'hi' ? 10 : 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.5).translate(0, 1.68, 0), P.cap, 0, 2));
+  parts.push(tag(new THREE.SphereGeometry(0.115, lod === 'hi' ? 8 : 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.5).translate(0, 1.68, 0), P.cap, 0, 2));
   if (lod === 'hi') parts.push(tag(new THREE.BoxGeometry(0.17, 0.015, 0.12).translate(0, 1.69, 0.12), P.cap, 0, 2));
   // arms hang from shoulder pivots (±0.22, 1.42)
   for (const sx of [-1, 1]) {

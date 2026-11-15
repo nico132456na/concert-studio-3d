@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { crowd } from '../audio/crowd';
 
 export type CrowdMoment = 'none' | 'handsUp' | 'wave' | 'sing' | 'phones' | 'cheer' | 'clap';
 import type { Atmosphere, FixtureLook, LedLook, LightScene } from '../types';
@@ -60,5 +61,8 @@ export const useShow = create<ShowState>((set, get) => ({
       liveVisual: null,
     }),
   clearOverride: () => set({ override: null, activeSceneId: null, playing: false, liveColor: null, liveVisual: null, liveEffect: 'none', blackout: false }),
-  trigger: (type) => set({ fx: [...get().fx.filter((f) => performance.now() / 1000 - f.t < 6), { type, t: performance.now() / 1000 }] }),
+  trigger: (type) => {
+    if (type === 'pyro' || type === 'flash') crowd.cue('impact');
+    set({ fx: [...get().fx.filter((f) => performance.now() / 1000 - f.t < 6), { type, t: performance.now() / 1000 }] });
+  },
 }));

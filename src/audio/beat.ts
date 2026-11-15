@@ -4,6 +4,9 @@
  */
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let room: BiquadFilterNode | null = null;
+let place: GainNode | null = null;
+let pan: StereoPannerNode | null = null;
 let streamOut: MediaStreamAudioDestinationNode | null = null;
 export const beatStream = () => streamOut?.stream ?? null;
 let timer: number | undefined;
@@ -21,9 +24,18 @@ function ensure() {
     ctx = new AC();
     master = ctx.createGain();
     master.gain.value = 0.6;
-    master.connect(ctx.destination);
+    // listener model: distance / backstage colour the PA mix
+    room = ctx.createBiquadFilter();
+    room.type = 'lowpass';
+    room.frequency.value = 18000;
+    place = ctx.createGain();
+    place.gain.value = 1;
+    pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    master.connect(room).connect(place);
+    if (pan) place.connect(pan).connect(ctx.destination);
+    else place.connect(ctx.destination);
     streamOut = ctx.createMediaStreamDestination();
-    master.connect(streamOut);
+    place.connect(streamOut);
   }
   return ctx;
 }
@@ -116,6 +128,14 @@ export const beat = {
   },
   get running() {
     return running;
+  },
+  /** Where the listener is: metres from the main PA, backstage or not, left/right offset (-1..1). */
+  setListener(dist: number, backstage: boolean, side: number) {
+    if (!ctx || !room || !place) return;
+    const t = ctx.currentTime;
+    room.frequency.setTargetAtTime(backstage ? 320 : Math.max(3500, 18000 - dist * 160), t, 0.25);
+    place.gain.setTargetAtTime(backstage ? 0.28 : Math.max(0.4, Math.min(1.15, 1.25 - dist / 90)), t, 0.25);
+    if (pan) pan.pan.setTargetAtTime(Math.max(-0.6, Math.min(0.6, side)), t, 0.3);
   },
 };
 

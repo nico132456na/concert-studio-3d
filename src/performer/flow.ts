@@ -63,6 +63,7 @@ export function goOnStage() {
   const ui = usePerformer.getState();
   ui.set({ entrance: 'fade', fade: 1 });
   crowd.roar(0.6);
+  crowd.cue('lift');
   later(900, () => {
     const s = useShow.getState();
     s.set({ blackout: true });

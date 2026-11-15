@@ -11,6 +11,7 @@ import { useShow } from '../state/showStore';
 import { walkSurface, supportHeight } from './collision';
 import { ctx } from './interaction';
 import { crowd } from '../audio/crowd';
+import { beat } from '../audio/beat';
 import type { StageObject } from '../types';
 import { useSettings } from '../state/settingsStore';
 import { trackGig } from '../performer/gig';
@@ -66,6 +67,8 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
   const autoT = useRef(0);
   const camSmooth = useRef(new THREE.Vector3());
   const hVel = useRef(new THREE.Vector2());
+  const audioT = useRef(0);
+  const lastStride = useRef(0);
   const first = useRef(true);
 
   useEffect(() => {
@@ -221,7 +224,21 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
     const target = backstage ? 0.15 : 0.25 + near * 0.45 + p.hypeBoost * 0.45 + (show.playing ? 0.15 : 0);
     p.hype += (target - p.hype) * Math.min(1, dt * 1.5);
     if (Math.abs(show.hype - p.hype) > 0.02) show.set({ hype: p.hype });
-    crowd.setLevel(backstage ? 0.06 + (p.pos.z > -12 ? 0.12 : 0) : p.hype, backstage);
+    crowd.setLevel(backstage ? 0.06 + (p.pos.z > -12 ? 0.12 : 0) : p.hype, backstage, backstage ? 0 : Math.max(near, onStage ? 0.3 : 0.9));
+    // PA mix follows the listener: duller at the back of the room, muffled under the stage
+    audioT.current -= dt;
+    if (audioT.current <= 0) {
+      audioT.current = 0.2;
+      beat.setListener(Math.hypot(p.pos.x, p.pos.z - 2), backstage, p.pos.x / 40);
+    }
+    // footsteps on each stride
+    if (p.onGround && p.speed > 0.15) {
+      const stride = Math.floor(p.phase / Math.PI);
+      if (stride !== lastStride.current) {
+        lastStride.current = stride;
+        crowd.footstep(backstage ? 'backstage' : onStage ? 'deck' : 'floor', Math.min(1.3, 0.5 + p.speed * 0.4));
+      }
+    }
 
     /* -------------------------- HUD state sync -------------------------- */
     const nearLift = backstage && Math.hypot(p.pos.x - LIFT.x, p.pos.z - LIFT.z) < LIFT.r + 0.4;

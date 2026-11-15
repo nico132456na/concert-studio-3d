@@ -259,16 +259,16 @@ const FixtureView = memo(function FixtureView({ f, selected, interactive, ceilin
         // base -> yoke (pan) -> head (tilt); hung fixtures are mounted upside down under the truss
         <group>
           <mesh geometry={G.clamp} material={trimMat} position={[0, hung ? 0.32 : -0.32, 0]} />
-          <mesh geometry={G.base} material={bodyMat} position={[0, hung ? 0.22 : -0.22, 0]} castShadow />
+          <mesh geometry={G.base} material={bodyMat} position={[0, hung ? 0.22 : -0.22, 0]} />
           <mesh geometry={G.display} material={displayMat} position={[0, hung ? 0.22 : -0.22, 0.191]} />
           <group ref={yoke}>
             <mesh geometry={G.yokeBar} material={bodyMat} position={[0, hung ? 0.13 : -0.13, 0]} />
             {[-1, 1].map((sx) => (
-              <mesh key={sx} geometry={G.arm} material={bodyMat} position={[sx * 0.21, hung ? -0.03 : 0.03, 0]} castShadow />
+              <mesh key={sx} geometry={G.arm} material={bodyMat} position={[sx * 0.21, hung ? -0.03 : 0.03, 0]} />
             ))}
             <group ref={head} position={[0, hung ? -0.08 : 0.08, 0]}>
               <group rotation={[flip, 0, 0]}>
-                <mesh geometry={isWash ? G.washHead : G.head} material={bodyMat} castShadow />
+                <mesh geometry={isWash ? G.washHead : G.head} material={bodyMat} />
                 {!isWash && <mesh geometry={G.headCap} material={bodyMat} />}
                 <mesh geometry={G.bezel} material={trimMat} position={[0, isWash ? 0.04 : 0, 0]} />
                 <mesh geometry={isWash ? G.washLens : G.lens} material={lensMat} />
@@ -279,7 +279,7 @@ const FixtureView = memo(function FixtureView({ f, selected, interactive, ceilin
       ) : isBar ? (
         <group rotation={[0, f.yaw, 0]}>
           <group ref={head}>
-            <mesh geometry={G.bar} material={bodyMat} castShadow />
+            <mesh geometry={G.bar} material={bodyMat} />
             {Array.from({ length: 8 }, (_, i) => (
               <mesh key={i} geometry={G.barCell} material={lensMat} position={[-0.43 + i * 0.123, m < 0 ? -0.058 : 0.058, 0]} rotation={[m < 0 ? Math.PI : 0, 0, 0]} />
             ))}
@@ -293,19 +293,19 @@ const FixtureView = memo(function FixtureView({ f, selected, interactive, ceilin
         </group>
       ) : isBlinder ? (
         <group ref={head}>
-          <mesh geometry={G.blinder} material={bodyMat} castShadow />
+          <mesh geometry={G.blinder} material={bodyMat} />
           {[[-0.15, -0.15], [0.15, -0.15], [-0.15, 0.15], [0.15, 0.15]].map(([x, z], i) => (
             <mesh key={i} geometry={G.blinderLamp} material={lensMat} position={[x, m < 0 ? -0.075 : 0.075, z]} rotation={[m < 0 ? 0 : Math.PI, 0, 0]} />
           ))}
         </group>
       ) : isStrobe ? (
         <group ref={head}>
-          <mesh geometry={G.strobe} material={bodyMat} castShadow />
+          <mesh geometry={G.strobe} material={bodyMat} />
           <mesh geometry={G.strobeLens} material={lensMat} position={[0, m < 0 ? -0.09 : 0.09, 0]} rotation={[m < 0 ? 0 : Math.PI, 0, 0]} />
         </group>
       ) : (
         <group>
-          <mesh geometry={G.laser} material={bodyMat} castShadow />
+          <mesh geometry={G.laser} material={bodyMat} />
           <mesh geometry={G.aperture} material={lensMat} position={[0, 0, 0.16]} />
           <lineSegments ref={laserLines} geometry={laserGeo} material={laserMat} raycast={() => null} frustumCulled={false} />
         </group>
