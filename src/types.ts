@@ -191,6 +191,15 @@ export interface LightPreset {
   intensity: number;
   effect?: EffectType;
   blackout?: boolean;
+  /** full "look" presets also set beam shape and movement */
+  beamAngle?: number;
+  focus?: number;
+  movement?: MovementPattern;
+  moveSpeed?: number;
+  moveSize?: number;
+  tilt?: number;
+  strobeRate?: number;
+  haze?: number;
 }
 
 export interface CameraState {

@@ -7,6 +7,7 @@ import { glowTexture, smokeTexture } from './textures';
 import { useShow } from '../state/showStore';
 import { useProject } from '../state/projectStore';
 import { rng } from '../util/misc';
+import { FxPlus } from './FxPlus';
 
 const noRay = () => null;
 const avg = new THREE.Color();
@@ -78,54 +79,6 @@ export function LowFog({ count = 22 }: { count?: number }) {
 
 const CONFETTI = 1400;
 
-function Confetti() {
-  const geom = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(CONFETTI * 3), 3));
-    const col = new Float32Array(CONFETTI * 3);
-    const r = rng(8);
-    const pal = ['#ffffff', '#ffc21a', '#ff2ad4', '#1ae0ff', '#d9a740'].map((c) => new THREE.Color(c));
-    for (let i = 0; i < CONFETTI; i++) {
-      const c = pal[Math.floor(r() * pal.length)];
-      col.set([c.r, c.g, c.b], i * 3);
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    return g;
-  }, []);
-  const seeds = useMemo(() => {
-    const r = rng(21);
-    return Array.from({ length: CONFETTI }, () => ({ vx: (r() - 0.5) * 18, vy: 14 + r() * 14, vz: 4 + r() * 22, ph: r() * 6, x0: (r() - 0.5) * 2 }));
-  }, []);
-  const pts = useRef<THREE.Points>(null);
-  useFrame(() => {
-    const fx = useShow.getState().fx.filter((f) => f.type === 'confetti');
-    const last = fx[fx.length - 1];
-    const now = performance.now() / 1000;
-    const t = last ? now - last.t : 99;
-    if (!pts.current) return;
-    pts.current.visible = t < 9;
-    if (t >= 9) return;
-    const front = stageFront();
-    const pos = geom.getAttribute('position') as THREE.BufferAttribute;
-    for (let i = 0; i < CONFETTI; i++) {
-      const s = seeds[i];
-      const ta = s.vy / 9.8;
-      const tb = Math.min(t, ta);
-      const apex = front.y + s.vy * ta - 4.9 * ta * ta;
-      const y = t < ta ? front.y + s.vy * t - 4.9 * t * t : Math.max(0.05, apex - (t - ta) * 1.6);
-      const x = s.x0 * front.w * 0.4 + s.vx * tb * 0.6 + Math.sin(t * 3 + s.ph) * 0.6 * Math.min(1, t);
-      const z = front.z + s.vz * tb * 0.6 + Math.max(0, t - ta) * 0.4;
-      pos.setXYZ(i, x, y, z);
-    }
-    pos.needsUpdate = true;
-  });
-  return (
-    <points ref={pts} geometry={geom} frustumCulled={false} raycast={noRay}>
-      <pointsMaterial size={0.18} vertexColors sizeAttenuation />
-    </points>
-  );
-}
-
 function Pyro() {
   const mat = useMemo(() => new THREE.SpriteMaterial({ map: glowTexture(), color: '#ff8a2a', blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }), []);
   const smoke = useMemo(() => new THREE.SpriteMaterial({ map: smokeTexture(), color: '#dddddd', transparent: true, depthWrite: false, opacity: 0.6 }), []);
@@ -194,8 +147,8 @@ function Pyro() {
 export function StageFx() {
   return (
     <>
-      <Confetti />
       <Pyro />
+      <FxPlus />
     </>
   );
 }

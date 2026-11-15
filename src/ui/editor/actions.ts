@@ -230,7 +230,21 @@ export function applyLightPreset(preset: LightPreset) {
     return;
   }
   useShow.getState().set({ blackout: false });
-  setFixtures((_f, i) => ({ on: true, color: preset.colors[i % preset.colors.length], intensity: preset.intensity, effect: preset.effect ?? 'none' }));
+  setFixtures((f, i) => {
+    const wash = f.type === 'wash' || f.type === 'blinder' || f.type === 'ledbar' || f.type === 'ledtube';
+    return {
+      on: true,
+      color: preset.colors[i % preset.colors.length],
+      intensity: preset.intensity,
+      effect: preset.effect ?? 'none',
+      ...(preset.beamAngle !== undefined && !wash ? { beamAngle: preset.beamAngle } : {}),
+      ...(preset.focus !== undefined ? { focus: preset.focus } : {}),
+      ...(preset.movement !== undefined && !wash ? { movement: preset.movement, moveSpeed: preset.moveSpeed ?? 1, moveSize: preset.moveSize ?? 25 } : {}),
+      ...(preset.tilt !== undefined && !wash ? { tilt: preset.tilt } : {}),
+      ...(preset.strobeRate !== undefined ? { strobeRate: preset.strobeRate } : {}),
+    };
+  });
+  if (preset.haze !== undefined) useProject.getState().mutate((p) => ({ ...p, atmosphere: { ...p.atmosphere, haze: preset.haze! } }), { key: 'look-haze' });
 }
 
 export function sceneFromCurrent(name: string, fade = 2): LightScene {

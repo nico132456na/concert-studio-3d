@@ -217,6 +217,9 @@ export function LiveMode() {
             <div className="pad-row">
               <button className="pad" onClick={() => s.trigger('pyro')}>PYRO<small>Flame jets</small></button>
               <button className="pad" onClick={() => s.trigger('confetti')}>CONFETTI<small>Cannons</small></button>
+              <button className="pad" onClick={() => s.trigger('streamers')}>STREAMERS<small>Metallic</small></button>
+              <button className="pad" onClick={() => s.trigger('sparks')}>SPARKS<small>Cold spark</small></button>
+              <button className="pad" onClick={() => s.trigger('fireworks')}>FIREWORKS<small>Aerial</small></button>
               <button className="pad" onClick={() => s.trigger('smoke')}>CO₂ JETS<small>Smoke blast</small></button>
               <button className="pad" onClick={() => s.trigger('flash')}>FLASH<small>All lights hit</small></button>
               <button className={`pad ${s.liveEffect === 'strobe' ? 'on' : ''}`} onClick={() => s.set({ liveEffect: s.liveEffect === 'strobe' ? 'none' : 'strobe' })}>

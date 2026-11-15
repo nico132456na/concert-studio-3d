@@ -17,6 +17,7 @@ import { manualSave } from '../editor/Chrome';
 import { perform, leadCrowd, interact, challenges, useGig } from '../../performer/gig';
 import { Trophy } from 'lucide-react';
 import { MoveZone, LookZone } from '../controls/TouchControls';
+import { STAGE_LOOKS, matchStage } from '../../data/stageLooks';
 
 export const SKINS = ['#f2d0b5', '#e0b08a', '#c68a5e', '#9a6340', '#6b4128', '#3f2617'];
 export const HAIRS: HairStyle[] = ['short', 'buzz', 'long', 'curly', 'braids', 'bun', 'bald'];
@@ -58,6 +59,11 @@ function Wardrobe() {
           ))}
           <button className="btn small" onClick={() => setNaming(true)}><Save size={14} /> Save outfit</button>
         </div>
+        <div className="section-title">Stage looks</div>
+        <div className="row wrap">
+          {STAGE_LOOKS.map((l) => <button key={l.id} className="btn small" onClick={() => upd(l.look)}>{l.name}</button>)}
+          <button className="btn small primary" onClick={() => upd(matchStage(look, useProject.getState().project))}>Match stage colours</button>
+          </div>
         <div className="section-title">Body</div>
         <Seg value={look.body ?? 'male'} onChange={(v) => upd({ body: v as 'male' | 'female' })} options={[{ v: 'male', label: 'Masculine' }, { v: 'female', label: 'Feminine' }]} />
         <div className="section-title">Skin</div>
@@ -371,6 +377,9 @@ export function PerformerMode() {
                 <>
                   <button className="pad" style={{ minWidth: 100, minHeight: 60 }} onClick={() => s.trigger('pyro')}>PYRO</button>
                   <button className="pad" style={{ minWidth: 100, minHeight: 60 }} onClick={() => s.trigger('confetti')}>CONFETTI</button>
+                  <button className="pad" style={{ minWidth: 100, minHeight: 60 }} onClick={() => s.trigger('streamers')}>STREAMERS</button>
+                  <button className="pad" style={{ minWidth: 100, minHeight: 60 }} onClick={() => s.trigger('sparks')}>SPARKS</button>
+                  <button className="pad" style={{ minWidth: 100, minHeight: 60 }} onClick={() => s.trigger('fireworks')}>FIREWORKS</button>
                   <button className="pad" style={{ minWidth: 100, minHeight: 60 }} onClick={() => s.trigger('smoke')}>CO₂</button>
                   <button className="pad" style={{ minWidth: 100, minHeight: 60 }} onClick={() => s.trigger('flash')}>FLASH</button>
                   <button className={`pad ${s.phoneLights ? 'on' : ''}`} style={{ minWidth: 100, minHeight: 60 }} onClick={() => s.set({ phoneLights: !s.phoneLights })}>PHONE LIGHTS</button>

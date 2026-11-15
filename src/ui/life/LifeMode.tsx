@@ -8,6 +8,7 @@ import { lifeActions } from '../../life/actions';
 import { input, doAction } from '../../performer/state';
 import { Swatches, SKINS, HAIRS, TOPS, BOTTOMS, COLORS } from '../performer/PerformerMode';
 import { MoveZone, LookZone } from '../controls/TouchControls';
+import { STAGE_LOOKS } from '../../data/stageLooks';
 import { ShowPicker } from './ShowPicker';
 import { screenshot } from '../../performer/recorder';
 import { saveBlob } from '../../util/misc';
@@ -31,6 +32,10 @@ function Closet() {
       </div>
       <div className="panel-body">
         <div className="hint" style={{ marginBottom: 10 }}>This look follows you everywhere — home, the red carpet and on stage.</div>
+        <div className="section-title">Stage looks</div>
+        <div className="row wrap">
+          {STAGE_LOOKS.map((l) => <button key={l.id} className="btn small" onClick={() => upd(l.look)}>{l.name}</button>)}
+          </div>
         <div className="section-title">Body</div>
         <Seg value={look.body ?? 'male'} onChange={(v) => upd({ body: v as 'male' | 'female' })} options={[{ v: 'male', label: 'Masculine' }, { v: 'female', label: 'Feminine' }]} />
         <div className="section-title">Skin</div>

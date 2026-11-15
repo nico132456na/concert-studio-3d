@@ -21,7 +21,7 @@ interface ShowState {
   liveColor: string | null;
   liveVisual: LedLook | null;
   liveEffect: 'none' | 'strobe' | 'pulse' | 'rainbow';
-  fx: { type: 'confetti' | 'pyro' | 'smoke' | 'flash'; t: number }[];
+  fx: { type: 'confetti' | 'pyro' | 'smoke' | 'flash' | 'streamers' | 'sparks' | 'fireworks'; t: number }[];
   bpm: number;
   hype: number;
   phoneLights: boolean;
@@ -62,7 +62,8 @@ export const useShow = create<ShowState>((set, get) => ({
     }),
   clearOverride: () => set({ override: null, activeSceneId: null, playing: false, liveColor: null, liveVisual: null, liveEffect: 'none', blackout: false }),
   trigger: (type) => {
-    if (type === 'pyro' || type === 'flash') crowd.cue('impact');
+    if (type === 'pyro' || type === 'flash' || type === 'fireworks') crowd.cue('impact');
+    if (type !== 'smoke') crowd.roar(0.5);
     set({ fx: [...get().fx.filter((f) => performance.now() / 1000 - f.t < 6), { type, t: performance.now() / 1000 }] });
   },
 }));

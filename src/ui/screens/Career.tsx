@@ -8,7 +8,8 @@ import { lifeActions } from '../../life/actions';
 import { ARENAS, getArena } from '../../data/arenas';
 import { ARCHIVE_ARTISTS } from '../../data/archive';
 import { Person } from '../../three/people/Person';
-import { ErrorBoundary, Modal } from '../components';
+import { ErrorBoundary, Modal, Seg } from '../components';
+import { STAGE_LOOKS } from '../../data/stageLooks';
 import { Swatches, SKINS, HAIRS, TOPS, COLORS } from '../performer/PerformerMode';
 import { ShowPicker } from '../life/ShowPicker';
 import type { AvatarLook } from '../../types';
@@ -72,6 +73,10 @@ function CreateArtist() {
       <div className="card">
         <div className="card-title">Look</div>
         <AvatarPreview look={look} />
+        <div className="section-title">Stage look</div>
+        <div className="row wrap">{STAGE_LOOKS.map((l) => <button key={l.id} className="btn small" onClick={() => upd(l.look)}>{l.name}</button>)}</div>
+        <div className="section-title">Body</div>
+        <Seg value={look.body ?? 'male'} onChange={(v) => upd({ body: v as 'male' | 'female' })} options={[{ v: 'male', label: 'Masculine' }, { v: 'female', label: 'Feminine' }]} />
         <div className="section-title">Skin</div>
         <Swatches value={look.skin} list={SKINS} onChange={(c) => upd({ skin: c })} />
         <div className="section-title">Hair</div>

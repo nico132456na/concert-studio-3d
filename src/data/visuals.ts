@@ -71,4 +71,13 @@ export const LIGHT_PRESETS: LightPreset[] = [
   { id: 'mono', name: 'Monochrome', colors: ['#ffffff', '#9a9a9a'], intensity: 0.85 },
   { id: 'rainbow', name: 'Rainbow', colors: ['#ff2a2a', '#ffc21a', '#7dff4d', '#1ae0ff', '#3d2aff', '#ff2ad4'], intensity: 1, effect: 'rainbow' },
   { id: 'blackout', name: 'Full Blackout', colors: ['#000000'], intensity: 0, blackout: true },
+  // full looks: colour + beam shape + movement
+  { id: 'look-dramatic', name: 'Dramatic White Spots', colors: ['#ffffff'], intensity: 1, beamAngle: 7, focus: 1, movement: 'none', tilt: 8, haze: 0.8 },
+  { id: 'look-hiphop', name: 'Hip-Hop Red & Blue', colors: ['#ff1010', '#1a3cff'], intensity: 1, beamAngle: 10, focus: 0.9, movement: 'ballyhoo', moveSpeed: 0.9, moveSize: 30, haze: 0.85 },
+  { id: 'look-cinema', name: 'Purple Cinematic', colors: ['#6a1aff', '#b02aff', '#2a1a6a'], intensity: 0.85, beamAngle: 14, focus: 0.7, movement: 'sweep', moveSpeed: 0.25, moveSize: 18, haze: 0.9 },
+  { id: 'look-gold', name: 'Warm Golden', colors: ['#ffb84a', '#ffd7a3'], intensity: 0.9, beamAngle: 22, focus: 0.5, movement: 'tilt', moveSpeed: 0.2, moveSize: 12, haze: 0.6 },
+  { id: 'look-festival', name: 'Rainbow Festival', colors: ['#ff2a2a', '#ffc21a', '#7dff4d', '#1ae0ff', '#3d2aff', '#ff2ad4'], intensity: 1, beamAngle: 9, focus: 0.9, movement: 'fan', moveSpeed: 1.4, moveSize: 40, effect: 'colorchase', haze: 0.9 },
+  { id: 'look-minimal', name: 'Minimal White', colors: ['#f4f4f4'], intensity: 0.6, beamAngle: 4, focus: 1, movement: 'none', tilt: 0, haze: 0.5 },
+  { id: 'look-energy', name: 'High Energy', colors: ['#ffffff', '#1ae0ff', '#ff2ad4'], intensity: 1, beamAngle: 6, focus: 1, movement: 'random', moveSpeed: 2.2, moveSize: 45, effect: 'strobe', strobeRate: 8, haze: 1 },
+  { id: 'look-slow', name: 'Slow Atmospheric Beams', colors: ['#9ec9ff', '#d0e4ff'], intensity: 0.8, beamAngle: 5, focus: 0.85, movement: 'circle', moveSpeed: 0.12, moveSize: 25, haze: 1 },
 ];
