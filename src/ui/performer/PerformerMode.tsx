@@ -14,6 +14,8 @@ import { startRecording, stopRecording, screenshot, canRecord } from '../../perf
 import { saveBlob, uid } from '../../util/misc';
 import type { AvatarLook, HairStyle, TopStyle, BottomStyle } from '../../types';
 import { manualSave } from '../editor/Chrome';
+import { perform, leadCrowd, interact, challenges, useGig } from '../../performer/gig';
+import { Trophy } from 'lucide-react';
 import { MoveZone, LookZone } from '../controls/TouchControls';
 
 export const SKINS = ['#f2d0b5', '#e0b08a', '#c68a5e', '#9a6340', '#6b4128', '#3f2617'];
@@ -145,6 +147,31 @@ function MapModal() {
   );
 }
 
+function Challenges() {
+  useGig((s) => s.tick);
+  const [open, setOpen] = useState(window.innerWidth > 900);
+  const list = challenges();
+  const done = list.filter((c) => c.progress >= 1).length;
+  return (
+    <div className="challenges">
+      <button className="btn small" onClick={() => setOpen(!open)}><Trophy size={15} /> Challenges {done}/{list.length}</button>
+      {open && (
+        <div className="challenge-list">
+          {list.map((c) => (
+            <div key={c.id} className={`challenge ${c.progress >= 1 ? 'done' : ''}`}>
+              <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+                <span>{c.progress >= 1 ? '✓ ' : ''}{c.label}</span>
+                <span className="hint">{c.detail}</span>
+              </div>
+              <div className="progress" style={{ height: 4, marginTop: 4 }}><div style={{ width: `${c.progress * 100}%` }} /></div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PerformerMode() {
   const project = useProject((s) => s.project);
   const pu = usePerformer();
@@ -170,7 +197,7 @@ export function PerformerMode() {
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
       if (k === ' ') input.jump = true;
       const acts: Record<string, Action> = { '1': 'dance', '2': 'wave', '3': 'handsUp', '4': 'point', '5': 'bow' };
-      if (acts[k]) doAction(acts[k]);
+      if (acts[k]) perform(acts[k]);
       if (k === 'v') usePerformer.getState().set({ cam: usePerformer.getState().cam === 'first' ? 'third' : 'first' });
       if (k === 'q') input.lookDX -= 40;
       if (k === 'e') input.lookDX += 40;
@@ -217,13 +244,18 @@ export function PerformerMode() {
   const cams: { v: CamMode; label: string }[] = [
     { v: 'third', label: '3rd' },
     { v: 'first', label: '1st' },
+    { v: 'follow', label: 'Follow' },
+    { v: 'rear', label: 'Rear' },
+    { v: 'side', label: 'Side' },
     { v: 'crowd', label: 'Crowd' },
+    { v: 'phone', label: 'Phone' },
+    { v: 'broadcast', label: 'Broadcast' },
     { v: 'drone', label: 'Drone' },
     { v: 'stagefront', label: 'Front' },
     { v: 'auto', label: 'Auto' },
   ];
   const act = (a: Action, label: string) => (
-    <button className={`act-btn ${player.action === a ? 'on' : ''}`} onPointerDown={(e) => { e.stopPropagation(); doAction(player.action === a && (a === 'dance' || a === 'handsUp') ? 'none' : a); }}>
+    <button className={`act-btn ${player.action === a ? 'on' : ''}`} onPointerDown={(e) => { e.stopPropagation(); if (player.action === a && (a === 'dance' || a === 'handsUp')) doAction('none'); else perform(a); }}>
       {label}
     </button>
   );
@@ -263,10 +295,43 @@ export function PerformerMode() {
         {act('wave', 'WAVE')}
         {act('handsUp', 'HANDS UP')}
         {act('point', 'POINT')}
+        {act('pose', 'POSE')}
         {act('bow', 'BOW')}
         <button className={`act-btn ${run ? 'on' : ''}`} onPointerDown={(e) => { e.stopPropagation(); setRun(!run); }}><Footprints size={16} /> RUN</button>
         <button className="act-btn" onPointerDown={(e) => { e.stopPropagation(); player.camYaw += Math.PI; player.yaw += Math.PI; }}><RotateCcw size={16} /> TURN</button>
       </div>
+
+      {/* lead the crowd */}
+      {pu.onStage && pu.entrance === 'none' && (
+        <div className="crowd-strip">
+          {([
+            ['handsUp', '🙌', 'Hands up'],
+            ['sing', '🎤', 'Sing along'],
+            ['wave', '🌊', 'Wave'],
+            ['phones', '📱', 'Phones up'],
+            ['clap', '👏', 'Clap'],
+          ] as const).map(([k, icon, label]) => (
+            <button key={k} className="crowd-btn" onPointerDown={(e) => { e.stopPropagation(); const r = leadCrowd(k); toast(r.msg, r.ok ? 'success' : 'info'); }}>
+              <span style={{ fontSize: 22 }}>{icon}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {pu.edge && pu.onStage && pu.entrance === 'none' && (
+        <div className="interact-strip">
+          <div className="badge" style={{ alignSelf: 'center' }}>Front row</div>
+          {([
+            ['highfive', '✋ High-five'],
+            ['selfie', '🤳 Selfie'],
+            ['sign', '🪧 Read a sign'],
+          ] as const).map(([k, label]) => (
+            <button key={k} className="btn primary" style={{ minHeight: 54 }} onPointerDown={(e) => { e.stopPropagation(); toast(interact(k), 'success'); }}>{label}</button>
+          ))}
+        </div>
+      )}
+      <Challenges />
+      {pu.cam === 'phone' && <div className="phone-frame"><span>● REC 0:{String(Math.floor(Date.now() / 1000) % 60).padStart(2, '0')}</span></div>}
 
       {/* contextual action */}
       <div className="perf-cta">

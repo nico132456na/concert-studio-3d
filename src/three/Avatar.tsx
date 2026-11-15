@@ -139,6 +139,13 @@ export function Avatar({ look, followPlayer = true, driver }: { look: AvatarLook
         armRx = -1.55;
         foreRx = 0;
         armRz = -0.1;
+      } else if (a === 'pose') {
+        // power pose: arms out wide, chest up
+        armLz = 1.35;
+        armRz = -1.35;
+        armLx = armRx = -0.2;
+        foreLx = foreRx = -0.1;
+        lean = -0.12 * Math.min(1, at * 3);
       } else if (a === 'bow') {
         lean = 0.9 * Math.min(1, Math.sin(Math.min(at, 2.4) * 1.3));
       }

@@ -10,6 +10,7 @@ import { ensureShow } from '../ui/editor/actions';
 import { show } from '../ui/showControl';
 import { getArena } from '../data/arenas';
 import { finishCareerShow } from '../life/actions';
+import { startGig, endGig } from './gig';
 
 let timers: number[] = [];
 const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
@@ -40,6 +41,7 @@ export function enterPerformer() {
   useUI.getState().set({ screen: 'performer', selection: [], deskOpen: false, left: null, cameraMenu: false });
   useUI.getState().bump('perform');
   crowd.start();
+  startGig();
 }
 
 export function exitPerformer() {
@@ -48,6 +50,7 @@ export function exitPerformer() {
   beat.stop();
   useShow.getState().clearOverride();
   useShow.getState().set({ hype: 0, phoneLights: false });
+  endGig();
   if (finishCareerShow()) return;
   useUI.getState().set({ screen: 'editor' });
 }

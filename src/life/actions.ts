@@ -11,6 +11,7 @@ import { createProject, openProjectById } from '../ui/flow';
 import { enterPerformer } from '../performer/flow';
 import { resetCar } from '../three/life/City';
 import { ARRIVAL_SPAWN, flashes } from '../three/life/Arrival';
+import { useGig } from '../performer/gig';
 
 let fanXpThisArrival = 0;
 
@@ -240,9 +241,12 @@ export function finishCareerShow(): boolean {
   const venueMult = Math.min(4, Math.max(0.6, arena.capacity / 15000));
   const avgHype = secs > 0 ? player.hypeSum / secs : 0;
   const counted = secs >= 20;
-  const xp = counted ? Math.round((Math.min(secs, 900) * 2.2 + player.hypeSum * 5) * venueMult) : 15;
-  const money = counted ? Math.round(crowd * 0.9 * Math.min(1, secs / 120) * (0.6 + avgHype)) : 0;
-  const rec = { at: Date.now(), venue: live.venue, project: live.projectName, minutes: Math.round((secs / 60) * 10) / 10, xp, money, crowd };
+  // the show rating multiplies the payout (S 1.6x ... D 0.8x)
+  const grade = useGig.getState().report?.grade ?? 'C';
+  const gradeMult = ({ S: 1.6, A: 1.35, B: 1.15, C: 1, D: 0.8 } as Record<string, number>)[grade] ?? 1;
+  const xp = counted ? Math.round((Math.min(secs, 900) * 2.2 + player.hypeSum * 5) * venueMult * gradeMult) : 15;
+  const money = counted ? Math.round(crowd * 0.9 * Math.min(1, secs / 120) * (0.6 + avgHype) * gradeMult) : 0;
+  const rec = { at: Date.now(), venue: live.venue, project: live.projectName, minutes: Math.round((secs / 60) * 10) / 10, xp, money, crowd, grade };
   cs.addXp(xp, money);
   cs.update({ shows: [...c.shows, rec].slice(-50), day: c.day + 1, recordedToday: false });
   cs.set({ live: null, lastResult: rec });

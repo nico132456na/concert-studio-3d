@@ -11,6 +11,7 @@ export interface ShowRecord {
   xp: number;
   money: number;
   crowd: number;
+  grade?: string;
 }
 
 export interface Career {

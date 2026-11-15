@@ -3,8 +3,8 @@ import { create } from 'zustand';
 import type { AvatarLook, PerformerData } from '../types';
 import { uid } from '../util/misc';
 
-export type CamMode = 'third' | 'first' | 'crowd' | 'drone' | 'stagefront' | 'auto' | 'wardrobe';
-export type Action = 'none' | 'dance' | 'wave' | 'handsUp' | 'point' | 'jump' | 'bow';
+export type CamMode = 'third' | 'first' | 'follow' | 'rear' | 'side' | 'crowd' | 'phone' | 'broadcast' | 'drone' | 'stagefront' | 'auto' | 'wardrobe';
+export type Action = 'none' | 'dance' | 'wave' | 'handsUp' | 'point' | 'jump' | 'bow' | 'pose';
 
 /** Hot, per-frame performer state (mutated in the render loop, never through React). */
 export const player = {
@@ -73,6 +73,8 @@ interface PerformerUI {
   map: boolean;
   recording: boolean;
   onStage: boolean;
+  /** standing at a deck edge facing the audience (fan interactions available) */
+  edge: boolean;
   set: (p: Partial<PerformerUI>) => void;
 }
 
@@ -87,6 +89,7 @@ export const usePerformer = create<PerformerUI>((set) => ({
   map: false,
   recording: false,
   onStage: false,
+  edge: false,
   set: (p) => set(p),
 }));
 

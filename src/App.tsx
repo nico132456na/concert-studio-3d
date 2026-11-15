@@ -7,6 +7,7 @@ import { ArenaSelect } from './ui/screens/ArenaSelect';
 import { Archive } from './ui/screens/Archive';
 import { CareerScreen } from './ui/screens/Career';
 import { LifeMode } from './ui/life/LifeMode';
+import { GigReportModal } from './ui/performer/GigReport';
 import { Projects } from './ui/screens/Projects';
 import { SettingsModal, StatsOverlay } from './ui/screens/SettingsModal';
 import { Editor } from './ui/editor/Editor';
@@ -72,6 +73,7 @@ export default function App() {
       <Tutorial />
       {settingsOpen && <SettingsModal />}
       <StatsOverlay />
+      {screen !== 'performer' && <GigReportModal />}
       <Toasts />
     </div>
   );

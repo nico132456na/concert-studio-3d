@@ -13,6 +13,7 @@ import { ctx } from './interaction';
 import { crowd } from '../audio/crowd';
 import type { StageObject } from '../types';
 import { useSettings } from '../state/settingsStore';
+import { trackGig } from '../performer/gig';
 
 export const capture: { gl: THREE.WebGLRenderer | null; still: (() => string) | null; scene?: THREE.Scene; camera?: THREE.Camera } = { gl: null, still: null };
 
@@ -198,7 +199,7 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
 
     /* ------------------------------ actions ------------------------------ */
     p.actionT += dt;
-    if ((p.action === 'wave' || p.action === 'point' || p.action === 'bow' || p.action === 'jump') && p.actionT > 2.6) p.action = 'none';
+    if ((p.action === 'wave' || p.action === 'point' || p.action === 'bow' || p.action === 'jump' || p.action === 'pose') && p.actionT > 2.6) p.action = 'none';
     p.hypeBoost = Math.max(0, p.hypeBoost - dt * 0.18);
 
     /* -------------------------- crowd reaction -------------------------- */
@@ -206,6 +207,13 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
     if (onStage) {
       p.stageTime += dt;
       p.hypeSum += p.hype * dt;
+    }
+    trackGig(dt, onStage, p.hype, onStage ? stepLen : 0);
+    // at a deck edge? (the ground just ahead drops away) -> fan interactions
+    let edge = false;
+    if (onStage && p.onGround) {
+      const ax = p.pos.x + Math.sin(p.yaw) * 1.4, az = p.pos.z + Math.cos(p.yaw) * 1.4;
+      edge = walkSurface(objects, ax, az, p.pos.y, 0).ground < p.pos.y - 0.6;
     }
     const front = crowdFront(arena);
     const near = onStage ? THREE.MathUtils.clamp(1 - Math.abs(front - p.pos.z) / 28, 0, 1) : 0;
@@ -221,14 +229,14 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
     let location = 'Arena Floor';
     if (backstage) location = roomAt(p.pos.x, p.pos.z)?.name ?? 'Backstage';
     else if (onStage) location = p.pos.z > 3 ? 'Runway / B-Stage' : 'Main Stage';
-    if (ui.nearLift !== nearLift || ui.nearArenaDoor !== nearDoor || ui.location !== location || ui.onStage !== onStage) usePerformer.getState().set({ nearLift, nearArenaDoor: nearDoor, location, onStage });
+    if (ui.nearLift !== nearLift || ui.nearArenaDoor !== nearDoor || ui.location !== location || ui.onStage !== onStage || ui.edge !== edge) usePerformer.getState().set({ nearLift, nearArenaDoor: nearDoor, location, onStage, edge });
 
     /* ------------------------------ camera ------------------------------ */
     let mode: CamMode = ui.cam;
     if (backstage && mode !== 'first' && mode !== 'wardrobe') mode = 'third';
     if (mode === 'auto') {
       autoT.current += dt;
-      const order: CamMode[] = ['third', 'crowd', 'drone', 'stagefront'];
+      const order: CamMode[] = ['broadcast', 'rear', 'crowd', 'side', 'drone', 'follow', 'phone', 'stagefront'];
       mode = order[Math.floor(autoT.current / 6) % order.length];
     }
     const h = 1.65;
@@ -249,6 +257,31 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
     } else if (mode === 'wardrobe') {
       camPos.set(p.pos.x + Math.sin(p.yaw) * 2.8, p.pos.y + 1.25, p.pos.z + Math.cos(p.yaw) * 2.8);
       look.set(p.pos.x, p.pos.y + 1.05, p.pos.z);
+    } else if (mode === 'follow') {
+      // steadicam: lags behind and to the side
+      const bx = p.pos.x - Math.sin(p.yaw) * 3.6 + Math.cos(p.yaw) * 1.2, bz = p.pos.z - Math.cos(p.yaw) * 3.6 - Math.sin(p.yaw) * 1.2;
+      camPos.set(bx, p.pos.y + 1.5, bz);
+      look.set(p.pos.x, p.pos.y + 1.3, p.pos.z);
+      if (!instant) {
+        camSmooth.current.lerp(camPos, Math.min(1, dt * 2.2));
+        camPos.copy(camSmooth.current);
+      }
+    } else if (mode === 'rear') {
+      // from upstage, over the artist's shoulder toward the crowd
+      camPos.set(p.pos.x * 0.6, p.pos.y + 3.8, p.pos.z - 8.5);
+      look.set(p.pos.x, p.pos.y + 1.2, p.pos.z + 14);
+    } else if (mode === 'side') {
+      camPos.set(p.pos.x + 8.5, p.pos.y + 1.7, p.pos.z + 0.5);
+      look.set(p.pos.x, p.pos.y + 1.4, p.pos.z);
+    } else if (mode === 'broadcast') {
+      // long lens from the front-of-house camera riser
+      camPos.set(3, 7, Math.max(front + 26, p.pos.z + 22));
+      look.set(p.pos.x, p.pos.y + 1.2, p.pos.z);
+    } else if (mode === 'phone') {
+      // a fan filming from the front rows: handheld shake
+      const t = state.clock.elapsedTime;
+      camPos.set(p.pos.x * 0.55 + Math.sin(t * 1.7) * 0.06 - 1.2, 1.85 + Math.sin(t * 2.3) * 0.04, Math.max(front + 2.5, p.pos.z + 5));
+      look.set(p.pos.x + Math.sin(t * 1.1) * 0.15, p.pos.y + 1.5 + Math.sin(t * 1.9) * 0.08, p.pos.z);
     } else if (mode === 'crowd') {
       camPos.set(p.pos.x * 0.4 + Math.sin(state.clock.elapsedTime * 0.1) * 4, 2.4, front + 9);
       look.copy(head);
@@ -278,7 +311,7 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
     else camSmooth.current.lerp(camPos, Math.min(1, dt * 6));
     camera.position.copy(camSmooth.current);
     camera.lookAt(look);
-    (camera as THREE.PerspectiveCamera).fov = mode === 'first' ? 70 : 55;
+    (camera as THREE.PerspectiveCamera).fov = mode === 'first' ? 70 : mode === 'broadcast' ? 22 : mode === 'phone' ? 62 : mode === 'side' ? 40 : 55;
     camera.updateProjectionMatrix();
     void inRect;
     void ROOM_BY_ID;

@@ -89,8 +89,6 @@ function Dashboard() {
   const career = useCareer((s) => s.career);
   const update = useCareer((s) => s.update);
   const reset = useCareer((s) => s.reset);
-  const result = useCareer((s) => s.lastResult);
-  const setC = useCareer((s) => s.set);
   const [picker, setPicker] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const tier = currentTier();
@@ -186,7 +184,7 @@ function Dashboard() {
         {career.shows.slice(-6).reverse().map((s) => (
           <div key={s.at} className="unlock">
             <div className="grow"><b>{getArena(s.venue).name}</b><div className="hint">{s.project} · {s.minutes} min · {s.crowd.toLocaleString()} fans</div></div>
-            <span className="badge">+{s.xp} XP</span>
+            <span className="badge">{s.grade ? `${s.grade} · ` : ''}+{s.xp} XP</span>
           </div>
         ))}
         <button className="btn small" style={{ marginTop: 14 }} onClick={() => setConfirm(true)}><RotateCcw size={14} /> Reset career</button>
@@ -195,18 +193,6 @@ function Dashboard() {
       {confirm && (
         <Modal title="Reset career?" onClose={() => setConfirm(false)} footer={<><button className="btn" onClick={() => setConfirm(false)}>Cancel</button><button className="btn danger" onClick={() => { reset(false); setConfirm(false); }}>Reset</button></>}>
           This erases your XP, money, homes and cars. Your saved stage projects are kept.
-        </Modal>
-      )}
-      {result && (
-        <Modal title="Show complete" onClose={() => setC({ lastResult: null })} footer={<button className="btn primary" onClick={() => setC({ lastResult: null })}>Continue</button>}>
-          <div style={{ fontSize: 16, lineHeight: 1.6 }}>
-            <b>{getArena(result.venue).name}</b> — {result.crowd.toLocaleString()} fans
-            <br />
-            {result.minutes} minutes on stage
-            <br />
-            <b>+{result.xp.toLocaleString()} XP</b> · <b>+${result.money.toLocaleString()}</b>
-            {result.minutes < 0.4 && <div className="hint" style={{ marginTop: 8 }}>Spend at least 20 seconds on stage for a full payout.</div>}
-          </div>
         </Modal>
       )}
     </div>
