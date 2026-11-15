@@ -19,6 +19,8 @@ export interface ObjectDef {
   hint: string;
   motion?: StageObject['motion'];
   ledVisual?: LedSpec['visual'];
+  /** plan outline for custom-shaped pieces (x, z in -0.5..0.5, +z toward the audience) */
+  outline?: [number, number][];
 }
 
 type D = Omit<ObjectDef, 'id'> & { id?: string };
@@ -44,6 +46,10 @@ const defs: D[] = [
   { kind: 'ramp', label: 'Ramp', category: 'stage', size: [3, 1.6, 6], material: 'matteBlack', hint: 'Sloped walkway' },
   { id: 'glassDeck', kind: 'platform', label: 'Glass Deck', category: 'stage', size: [6, 1.6, 6], material: 'frosted', hint: 'Transparent flooring' },
   { id: 'metalDeck', kind: 'platform', label: 'Metal Deck', category: 'stage', size: [6, 1.6, 6], material: 'steelGrid', hint: 'Steel grating deck' },
+  { id: 'splitRunway', kind: 'custom', label: 'Split Runway', category: 'stage', size: [16, 1.6, 18], material: 'glossBlack', hint: 'Y-shaped thrust that splits in two', outline: [[-0.09, -0.5], [0.09, -0.5], [0.09, -0.05], [0.5, 0.42], [0.38, 0.5], [0, 0.12], [-0.38, 0.5], [-0.5, 0.42], [-0.09, -0.05]] },
+  { id: 'raisedBridge', kind: 'runway', label: 'Raised Bridge', category: 'stage', size: [3, 0.35, 14], y: 3.2, material: 'steelGrid', hint: 'Walkway on legs with handrails' },
+  { id: 'raisedSatellite', kind: 'circlePlatform', label: 'Satellite Platform', category: 'stage', size: [6, 0.4, 6], y: 1.4, material: 'glossBlack', hint: 'Raised round platform on legs' },
+  { id: 'acrylicDeck', kind: 'platform', label: 'Clear Acrylic Deck', category: 'stage', size: [6, 1.6, 6], material: 'acrylic', hint: 'See-through deck' },
   { id: 'riser', kind: 'platform', label: 'Riser', category: 'stage', size: [4, 0.6, 3], material: 'matteBlack', hint: 'Band / drum riser' },
   { id: 'fascia', kind: 'ledHorizontal', label: 'Stage Fascia', category: 'stage', size: [16, 1.2, 0.1], y: 0.2, material: 'matteBlack', led: true, hint: 'LED strip on deck front' },
   // ---------- Stage: advanced shapes ----------
@@ -180,7 +186,7 @@ type ObjOver = Partial<Omit<StageObject, 'material' | 'led'>> & { material?: Par
 /** Create from a library entry id (variants like 'square' or 'globeStage'). */
 export function makeFromDef(defId: string, over: ObjOver = {}): StageObject {
   const def = DEF_BY_ID[defId] ?? OBJECT_DEF[defId] ?? OBJECT_DEFS[0];
-  return makeObject(def.kind, { name: def.label, size: [...def.size] as Vec3, material: over.material ?? def.material, motion: def.motion, ...over, led: { ...(def.ledVisual ? { visual: def.ledVisual } : {}), ...(def.kind === 'ledSphere' || def.kind === 'ledCylinder' ? { resolution: 0 } : {}), ...(over.led ?? {}) } }, def);
+  return makeObject(def.kind, { ...(def.outline ? { outline: def.outline } : {}), name: def.label, size: [...def.size] as Vec3, material: over.material ?? def.material, motion: def.motion, ...over, led: { ...(def.ledVisual ? { visual: def.ledVisual } : {}), ...(def.kind === 'ledSphere' || def.kind === 'ledCylinder' ? { resolution: 0 } : {}), ...(over.led ?? {}) } }, def);
 }
 
 export function makeObject(kind: ObjectKind, over: ObjOver = {}, defOverride?: ObjectDef): StageObject {

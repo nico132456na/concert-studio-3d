@@ -56,7 +56,7 @@ function placeFor(defId: string): StageObject['pos'] {
   const [w, h, d] = def.size;
   const isDeck = def.category === 'stage' || def.category === 'shapes';
   const flown = (def.y ?? 0) > 3;
-  if (isDeck && !flown && def.kind !== 'stairs' && def.kind !== 'ramp' && (def.y ?? 0) === 0) {
+  if (isDeck && !flown && def.kind !== 'stairs' && def.kind !== 'ramp') {
     // find a free spot on the floor: spiral outward from the look point
     const step = Math.max(2, Math.ceil(Math.max(w, d) / 2));
     outer: for (let ring = 0; ring < 12; ring++) {
@@ -64,14 +64,15 @@ function placeFor(defId: string): StageObject['pos'] {
         const a = (k / Math.max(1, ring * 8)) * Math.PI * 2;
         const cx = Math.round(x + Math.cos(a) * ring * step);
         const cz = Math.round(z + Math.sin(a) * ring * step);
-        if (!overlaps(objs, cx, cz, w, d, 0, h)) {
+        if (!overlaps(objs, cx, cz, w, d, def.y ?? 0, h)) {
           x = cx;
           z = cz;
           break outer;
         }
       }
     }
-    return [x, 0, z];
+    // raised decks (satellite platforms) keep their design height and stand on legs
+    return [x, def.y ?? 0, z];
   }
   if (flown) return [x, def.y ?? 6, z];
   // ground items and screens: stand on the deck under the point (or the floor)

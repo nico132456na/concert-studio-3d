@@ -162,7 +162,23 @@ export function StageDetail({ obj }: { obj: StageObject }) {
           }
       const g = tubesBetween(pairs, 0.045);
       if (g) out.push({ geo: g, mat: m.steel });
-      // dark underside so raised decks don't look paper thin
+      // handrails on high walkways
+      if (box && legH > 1.2) {
+        const rails: [THREE.Vector3, THREE.Vector3][] = [];
+        const long = d >= w;
+        const L = long ? d : w, sideOff = (long ? w : d) / 2 - 0.05;
+        for (const sgn of [-1, 1]) {
+          const P = (t: number, y: number) => (long ? new THREE.Vector3(sgn * sideOff, y, t) : new THREE.Vector3(t, y, sgn * sideOff));
+          rails.push([P(-L / 2, h + 1.05), P(L / 2, h + 1.05)], [P(-L / 2, h + 0.55), P(L / 2, h + 0.55)]);
+          const n = Math.max(2, Math.round(L / 1.8) + 1);
+          for (let i = 0; i < n; i++) {
+            const t = -L / 2 + (i / (n - 1)) * L;
+            rails.push([P(t, h), P(t, h + 1.05)]);
+          }
+        }
+        const rg = tubesBetween(rails, 0.022);
+        if (rg) out.push({ geo: rg, mat: m.steel });
+      }
     }
     return out;
   }, [box, round, stairs, w, h, d, raised, grounded, isLedTop, obj.kind, obj.pos[1], hexSides]); // eslint-disable-line react-hooks/exhaustive-deps
