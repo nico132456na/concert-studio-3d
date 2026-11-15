@@ -79,6 +79,7 @@ function ObjectTab({ objs }: { objs: StageObject[] }) {
         <button className="btn small" onClick={() => requestCamera('free', [o.pos[0], o.pos[1] + o.size[1] / 2, o.pos[2]], Math.max(6, Math.max(...o.size) * 1.8))}><Crosshair size={16} /> Focus</button>
       </div>
       {anyLocked && <div className="hint" style={{ marginTop: 8 }}>Locked items can't be moved or resized.</div>}
+      {objs.length > 1 && <ArrangeSection ids={ids} objs={objs} />}
       {objs.some((x) => AUDIO_KINDS.has(x.kind)) && <SpeakerSection objs={objs.filter((x) => AUDIO_KINDS.has(x.kind))} />}
 
       <div className="section-title">Position</div>
@@ -402,5 +403,58 @@ export function RightPanel() {
         {active === 'light' && <FixtureControls fixtureIds={fxs.map((f) => f.id)} showActions />}
       </div>
     </div>
+  );
+}
+
+
+/* ---------------- align & distribute (multi-selection) ---------------- */
+function extents(o: StageObject) {
+  const c = Math.abs(Math.cos(o.rot[1])), s = Math.abs(Math.sin(o.rot[1]));
+  return { hx: (o.size[0] * c + o.size[2] * s) / 2, hz: (o.size[0] * s + o.size[2] * c) / 2 };
+}
+
+function ArrangeSection({ ids, objs }: { ids: string[]; objs: StageObject[] }) {
+  const movable = objs.filter((o) => !o.locked);
+  const apply = (fn: (o: StageObject) => Vec3, label: string) => {
+    const target = new Map(movable.map((o) => [o.id, fn(o)]));
+    edit.updateObjects(ids, (x) => (target.has(x.id) ? { ...x, pos: target.get(x.id)! } : x));
+    toast(label);
+  };
+  const minX = Math.min(...movable.map((o) => o.pos[0] - extents(o).hx));
+  const maxX = Math.max(...movable.map((o) => o.pos[0] + extents(o).hx));
+  const minZ = Math.min(...movable.map((o) => o.pos[2] - extents(o).hz));
+  const maxZ = Math.max(...movable.map((o) => o.pos[2] + extents(o).hz));
+  const distribute = (axis: 0 | 2) => {
+    const sorted = [...movable].sort((a, b) => a.pos[axis] - b.pos[axis]);
+    if (sorted.length < 3) return toast('Select at least 3 items to distribute');
+    const ext = (o: StageObject) => (axis === 0 ? extents(o).hx : extents(o).hz);
+    const total = sorted.reduce((a, o) => a + ext(o) * 2, 0);
+    const lo = sorted[0].pos[axis] - ext(sorted[0]);
+    const hi = sorted[sorted.length - 1].pos[axis] + ext(sorted[sorted.length - 1]);
+    const gap = (hi - lo - total) / (sorted.length - 1);
+    let cur = lo;
+    const out = new Map<string, number>();
+    for (const o of sorted) {
+      out.set(o.id, cur + ext(o));
+      cur += ext(o) * 2 + gap;
+    }
+    apply((o) => (axis === 0 ? [out.get(o.id)!, o.pos[1], o.pos[2]] : [o.pos[0], o.pos[1], out.get(o.id)!]), `Distributed along ${axis === 0 ? 'X' : 'Z'}`);
+  };
+  return (
+    <>
+      <div className="section-title">Arrange</div>
+      <div className="grid-3">
+        <button className="btn small" onClick={() => apply((o) => [minX + extents(o).hx, o.pos[1], o.pos[2]], 'Aligned left')}>Align left</button>
+        <button className="btn small" onClick={() => apply((o) => [(minX + maxX) / 2, o.pos[1], o.pos[2]], 'Centred on X')}>Centre X</button>
+        <button className="btn small" onClick={() => apply((o) => [maxX - extents(o).hx, o.pos[1], o.pos[2]], 'Aligned right')}>Align right</button>
+        <button className="btn small" onClick={() => apply((o) => [o.pos[0], o.pos[1], minZ + extents(o).hz], 'Aligned to back')}>Align back</button>
+        <button className="btn small" onClick={() => apply((o) => [o.pos[0], o.pos[1], (minZ + maxZ) / 2], 'Centred on Z')}>Centre Z</button>
+        <button className="btn small" onClick={() => apply((o) => [o.pos[0], o.pos[1], maxZ - extents(o).hz], 'Aligned to front')}>Align front</button>
+        <button className="btn small" onClick={() => distribute(0)}>Distribute X</button>
+        <button className="btn small" onClick={() => distribute(2)}>Distribute Z</button>
+        <button className="btn small" onClick={() => { const y = movable[0].pos[1]; apply((o) => [o.pos[0], y, o.pos[2]], 'Levelled to the same height'); }}>Same height</button>
+        <button className="btn small" onClick={() => apply((o) => [o.pos[0], 0, o.pos[2]], 'Dropped to the floor')}>To floor</button>
+      </div>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import type { AvatarLook } from '../../types';
 import { player } from '../../performer/state';
 import { Avatar, type AvatarDriver } from '../Avatar';
 import { kit as loadedKit, loadPeople, type Body, type PeopleKit } from './kit';
+import { garmentGeometry, fabricMaterial } from './garments';
 
 /* ------------------------------------------------------------------ */
 /* materials                                                           */
@@ -163,17 +164,39 @@ class PersonRig {
         height = bb.max.y;
       }
     });
+    let bodyMesh: THREE.SkinnedMesh | null = null;
     scene.traverse((o) => {
       const mesh = o as THREE.SkinnedMesh;
       if (!mesh.isMesh) return;
       const src = mesh.material as THREE.MeshStandardMaterial;
       let m: THREE.Material;
-      if (/superhero/i.test(src.name) || /superhero/i.test(mesh.name)) m = bodyMaterial(src, look, body, k, span, height);
+      if (/superhero/i.test(src.name) || /superhero/i.test(mesh.name)) {
+        m = bodyMaterial(src, look, body, k, span, height);
+        bodyMesh = mesh;
+      }
       else if (/hair/i.test(src.name)) m = hairMaterial(src, look.hairColor);
       else m = src.clone();
       mesh.material = m;
       this.mats.push(m);
     });
+    // loose 3D garments on the same skeleton (the painted clothing stays underneath)
+    if (bodyMesh) {
+      const bm: THREE.SkinnedMesh = bodyMesh;
+      for (const region of ['top', 'bottom'] as const) {
+        const geo = garmentGeometry(bm.geometry, region, look, body, span, height);
+        if (!geo) continue;
+        const mat = fabricMaterial(region === 'top' ? look.topColor : look.bottomColor, region, look);
+        const sm = new THREE.SkinnedMesh(geo, mat);
+        sm.position.copy(bm.position);
+        sm.quaternion.copy(bm.quaternion);
+        sm.scale.copy(bm.scale);
+        sm.bind(bm.skeleton, bm.bindMatrix);
+        sm.frustumCulled = false;
+        sm.castShadow = true;
+        bm.parent?.add(sm);
+        this.mats.push(mat);
+      }
+    }
     const ul = this.bones.upperarm_l;
     if (ul) this.side = Math.sign(ul.getWorldPosition(tmpA).x) || 1;
     // hair & accessories ride on the head bone (built in rest-pose model space)
