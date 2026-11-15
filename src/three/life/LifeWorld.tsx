@@ -21,6 +21,7 @@ function LifeRig() {
   const look = useRef(new THREE.Vector3());
   const first = useRef(true);
   const cine = useRef(0);
+  const hVel = useRef(new THREE.Vector2());
 
   useEffect(() => {
     capture.gl = gl;
@@ -46,22 +47,37 @@ function LifeRig() {
     if (onFoot) {
       p.camYaw -= input.lookDX * 0.0055;
       p.camPitch = THREE.MathUtils.clamp(p.camPitch + input.lookDY * 0.004, -0.5, 0.9);
+      const cfg = useSettings.getState();
       const mag = Math.min(1, Math.hypot(input.moveX, input.moveY));
-      const speed = locked ? 0 : mag * (input.run || mag > 0.92 ? 4.6 : 2.4);
-      if (mag > 0.05 && !locked) {
+      const target = locked ? 0 : mag * (input.run || mag > 0.95 ? cfg.runSpeed * 0.85 : cfg.walkSpeed * 0.92);
+      let dx = 0, dz = 0;
+      if (mag > 0.02 && !locked) {
         const fx = Math.sin(p.camYaw), fz = Math.cos(p.camYaw), rx = -Math.cos(p.camYaw), rz = Math.sin(p.camYaw);
-        const dx = (fx * input.moveY + rx * input.moveX) / mag, dz = (fz * input.moveY + rz * input.moveX) / mag;
-        let diff = Math.atan2(dx, dz) - p.yaw;
-        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-        p.yaw += diff * Math.min(1, dt * 10);
+        dx = (fx * input.moveY + rx * input.moveX) / mag;
+        dz = (fz * input.moveY + rz * input.moveX) / mag;
         if (p.action === 'dance') p.action = 'none';
-        const nx = p.pos.x + dx * speed * dt, nz = p.pos.z + dz * speed * dt;
+      }
+      const hv = hVel.current;
+      const acc = target > hv.length() ? 11 : 15;
+      hv.x += (dx * target - hv.x) * Math.min(1, dt * acc);
+      hv.y += (dz * target - hv.y) * Math.min(1, dt * acc);
+      const speed = hv.length();
+      if (speed > 0.15) {
+        let diff = Math.atan2(hv.x, hv.y) - p.yaw;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        p.yaw += diff * Math.min(1, dt * 11);
+        const nx = p.pos.x + hv.x * dt, nz = p.pos.z + hv.y * dt;
         if (walkArea.test(nx, nz)) p.pos.set(nx, p.pos.y, nz);
-        else if (walkArea.test(nx, p.pos.z)) p.pos.x = nx;
-        else if (walkArea.test(p.pos.x, nz)) p.pos.z = nz;
+        else if (walkArea.test(nx, p.pos.z)) {
+          p.pos.x = nx;
+          hv.y *= 0.3;
+        } else if (walkArea.test(p.pos.x, nz)) {
+          p.pos.z = nz;
+          hv.x *= 0.3;
+        } else hv.multiplyScalar(0.2);
       }
       if (ui.cam === 'first' && !locked) p.yaw = p.camYaw;
-      p.speed += (speed / 2.4 - p.speed) * Math.min(1, dt * 8);
+      p.speed = speed / Math.max(1, cfg.walkSpeed);
       p.actionT += dt;
       if ((p.action === 'wave' || p.action === 'point' || p.action === 'bow') && p.actionT > 2.6) p.action = 'none';
       p.pos.y = ui.phase === 'arrival' ? 0.2 : 0;
@@ -116,7 +132,7 @@ function LifeRig() {
         cam.lookAt(look.current);
       } else {
         // third person: pull the camera in when a wall is behind (indoors)
-        let dist = ui.phase === 'home' ? 3.2 : 4.6;
+        let dist = (ui.phase === 'home' ? 3.2 : 4.6) * input.zoom;
         const behind = (d: number) => [p.pos.x - Math.sin(p.camYaw) * d * Math.cos(p.camPitch * 0.6), p.pos.z - Math.cos(p.camYaw) * d * Math.cos(p.camPitch * 0.6)];
         if (ui.phase === 'home') while (dist > 0.9 && !walkArea.test(behind(dist)[0], behind(dist)[1])) dist -= 0.3;
         const [bx, bz] = behind(dist);

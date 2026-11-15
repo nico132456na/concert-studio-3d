@@ -12,6 +12,7 @@ import { walkSurface, supportHeight } from './collision';
 import { ctx } from './interaction';
 import { crowd } from '../audio/crowd';
 import type { StageObject } from '../types';
+import { useSettings } from '../state/settingsStore';
 
 export const capture: { gl: THREE.WebGLRenderer | null; still: (() => string) | null; scene?: THREE.Scene; camera?: THREE.Camera } = { gl: null, still: null };
 
@@ -63,6 +64,7 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
   const { camera, gl, scene } = useThree();
   const autoT = useRef(0);
   const camSmooth = useRef(new THREE.Vector3());
+  const hVel = useRef(new THREE.Vector2());
   const first = useRef(true);
 
   useEffect(() => {
@@ -100,24 +102,37 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
     }
     input.lookDX = 0;
     input.lookDY = 0;
+    const cfg = useSettings.getState();
     const mag = Math.min(1, Math.hypot(input.moveX, input.moveY));
-    const running = input.run || mag > 0.92;
-    const targetSpeed = locked ? 0 : mag * (running ? 5.4 : 2.6);
+    const running = input.run || mag > 0.95;
+    const targetSpeed = locked ? 0 : mag * (running ? cfg.runSpeed : cfg.walkSpeed);
+    // camera-relative direction (forward = where the camera looks), diagonals normalised
     const fx = Math.sin(p.camYaw), fz = Math.cos(p.camYaw);
     const rx = -Math.cos(p.camYaw), rz = Math.sin(p.camYaw);
     let dx = 0, dz = 0;
-    if (mag > 0.05 && !locked) {
+    if (mag > 0.02 && !locked) {
       dx = (fx * input.moveY + rx * input.moveX) / Math.max(mag, 1e-3);
       dz = (fz * input.moveY + rz * input.moveX) / Math.max(mag, 1e-3);
-      const want = Math.atan2(dx, dz);
-      let diff = want - p.yaw;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      p.yaw += diff * Math.min(1, dt * 10);
       if (p.action === 'dance' || p.action === 'handsUp') p.action = 'none';
     }
+    // accelerate / decelerate the horizontal velocity instead of snapping
+    const hv = hVel.current;
+    const accel = targetSpeed > hv.length() ? 11 : 15;
+    hv.x += (dx * targetSpeed - hv.x) * Math.min(1, dt * accel);
+    hv.y += (dz * targetSpeed - hv.y) * Math.min(1, dt * accel);
+    const hs = hv.length();
+    if (hs > 0.15) {
+      let diff = Math.atan2(hv.x, hv.y) - p.yaw;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      p.yaw += diff * Math.min(1, dt * (running ? 9 : 12));
+    }
     if (ui.cam === 'first' && !locked) p.yaw = p.camYaw;
-    p.speed += ((targetSpeed / 2.6) - p.speed) * Math.min(1, dt * 8);
-    const stepLen = targetSpeed * dt;
+    p.speed = hs / Math.max(1, cfg.walkSpeed);
+    const stepLen = hs * dt;
+    if (hs > 1e-4) {
+      dx = hv.x / hs;
+      dz = hv.y / hs;
+    }
 
     const tryMove = (nx: number, nz: number) => {
       if (p.pos.y < -3) return walkableBackstage(nx, nz, backstageData.obstacles) ? BACKSTAGE_Y : null;
@@ -136,12 +151,15 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
         p.pos.z = nz;
         ground = g;
       } else if ((g = tryMove(nx, p.pos.z)) !== null) {
+        // slide along the obstacle
         p.pos.x = nx;
         ground = g;
+        hVel.current.y *= 0.3;
       } else if ((g = tryMove(p.pos.x, nz)) !== null) {
         p.pos.z = nz;
         ground = g;
-      }
+        hVel.current.x *= 0.3;
+      } else hVel.current.multiplyScalar(0.2);
     }
 
     /* ----------------------------- vertical ----------------------------- */
@@ -243,7 +261,7 @@ export function PerformerRig({ arena }: { arena: ArenaDef }) {
       look.set(p.pos.x, p.pos.y + 1.6, p.pos.z);
     } else {
       // wider framing out front so the stage, crowd and performer all read
-      let dist = (backstage ? 4.2 : 6.4) - p.camPitch * 1.2;
+      let dist = ((backstage ? 4.2 : 6.4) - p.camPitch * 1.2) * input.zoom;
       const up = (backstage ? 1.2 : 1.9) + p.camPitch * 2.4;
       // keep the camera inside backstage rooms
       if (backstage) {

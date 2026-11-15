@@ -21,6 +21,16 @@ export interface Settings {
   outlines: boolean;
   /** audience density multiplier */
   crowdDensity: number;
+  /** touch controls */
+  joySize: number;
+  joyOpacity: number;
+  joyMode: 'floating' | 'fixed';
+  moveSens: number;
+  walkSpeed: number;
+  runSpeed: number;
+  lookSens: number;
+  invertY: boolean;
+  camDistance: number;
 }
 
 const KEY = 'cs3d-settings';
@@ -41,6 +51,15 @@ const defaults: Settings = {
   shadow: 0.7,
   outlines: true,
   crowdDensity: 1,
+  joySize: 160,
+  joyOpacity: 0.7,
+  joyMode: 'floating',
+  moveSens: 1,
+  walkSpeed: 2.6,
+  runSpeed: 5.6,
+  lookSens: 1,
+  invertY: false,
+  camDistance: 1,
 };
 
 function load(): Settings {

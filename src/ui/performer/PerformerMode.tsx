@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Map as MapIcon, Shirt, Camera, Circle, Square, Play, Pause, SkipForward, Moon, ArrowUpCircle, DoorOpen, Undo2, Save, Trash2, Footprints } from 'lucide-react';
+import { RotateCcw, SlidersHorizontal, X, Map as MapIcon, Shirt, Camera, Circle, Square, Play, Pause, SkipForward, Moon, ArrowUpCircle, DoorOpen, Undo2, Save, Trash2, Footprints } from 'lucide-react';
 import { Viewport } from '../../three/Viewport';
 import { ErrorBoundary, Modal, Seg, Toggle, PromptModal } from '../components';
 import { useProject } from '../../state/projectStore';
@@ -14,71 +14,7 @@ import { startRecording, stopRecording, screenshot, canRecord } from '../../perf
 import { saveBlob, uid } from '../../util/misc';
 import type { AvatarLook, HairStyle, TopStyle, BottomStyle } from '../../types';
 import { manualSave } from '../editor/Chrome';
-
-export function Joystick() {
-  const [knob, setKnob] = useState({ x: 0, y: 0 });
-  const id = useRef<number | null>(null);
-  const center = useRef({ x: 0, y: 0 });
-  const R = 56;
-  const update = (e: React.PointerEvent) => {
-    const dx = e.clientX - center.current.x, dy = e.clientY - center.current.y;
-    const d = Math.min(R, Math.hypot(dx, dy));
-    const a = Math.atan2(dy, dx);
-    const x = Math.cos(a) * d, y = Math.sin(a) * d;
-    setKnob({ x, y });
-    input.moveX = x / R;
-    input.moveY = -y / R;
-  };
-  return (
-    <div
-      className="joy"
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        id.current = e.pointerId;
-        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        center.current = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-        update(e);
-      }}
-      onPointerMove={(e) => e.pointerId === id.current && update(e)}
-      onPointerUp={() => {
-        id.current = null;
-        setKnob({ x: 0, y: 0 });
-        input.moveX = input.moveY = 0;
-      }}
-      onPointerCancel={() => {
-        id.current = null;
-        setKnob({ x: 0, y: 0 });
-        input.moveX = input.moveY = 0;
-      }}
-    >
-      <div className="joy-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
-    </div>
-  );
-}
-
-/** Drag anywhere (not on a control) to look around. */
-export function LookLayer() {
-  const last = useRef<Map<number, { x: number; y: number }>>(new Map());
-  return (
-    <div
-      className="look-layer"
-      onPointerDown={(e) => {
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        last.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      }}
-      onPointerMove={(e) => {
-        const l = last.current.get(e.pointerId);
-        if (!l) return;
-        input.lookDX += e.clientX - l.x;
-        input.lookDY += e.clientY - l.y;
-        last.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      }}
-      onPointerUp={(e) => last.current.delete(e.pointerId)}
-      onPointerCancel={(e) => last.current.delete(e.pointerId)}
-    />
-  );
-}
+import { MoveZone, LookZone } from '../controls/TouchControls';
 
 export const SKINS = ['#f2d0b5', '#e0b08a', '#c68a5e', '#9a6340', '#6b4128', '#3f2617'];
 export const HAIRS: HairStyle[] = ['short', 'buzz', 'long', 'curly', 'braids', 'bun', 'bald'];
@@ -297,7 +233,7 @@ export function PerformerMode() {
       <ErrorBoundary label="Performer view">
         <Viewport mode="performer" arenaId={project.arenaId} />
       </ErrorBoundary>
-      <LookLayer />
+      <LookZone />
       <div className="perf-top">
         <button className="btn" onClick={exitPerformer} aria-label="Exit performer mode"><X size={18} /> Exit</button>
         <div className="badge" style={{ fontSize: 13, padding: '8px 12px' }}>📍 {pu.location}</div>
@@ -316,9 +252,10 @@ export function PerformerMode() {
           </button>
         )}
         <button className="icon-btn boxed" onClick={manualSave} aria-label="Save" data-tut="save-perf"><Save size={20} /></button>
+        <button className="icon-btn boxed" onClick={() => useUI.getState().set({ settingsOpen: true })} aria-label="Controls & settings"><SlidersHorizontal size={20} /></button>
       </div>
 
-      <Joystick />
+      <MoveZone />
 
       <div className="act-grid">
         <button className="act-btn big" onPointerDown={(e) => { e.stopPropagation(); input.jump = true; }}>JUMP</button>
@@ -328,6 +265,7 @@ export function PerformerMode() {
         {act('point', 'POINT')}
         {act('bow', 'BOW')}
         <button className={`act-btn ${run ? 'on' : ''}`} onPointerDown={(e) => { e.stopPropagation(); setRun(!run); }}><Footprints size={16} /> RUN</button>
+        <button className="act-btn" onPointerDown={(e) => { e.stopPropagation(); player.camYaw += Math.PI; player.yaw += Math.PI; }}><RotateCcw size={16} /> TURN</button>
       </div>
 
       {/* contextual action */}

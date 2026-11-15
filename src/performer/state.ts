@@ -38,6 +38,8 @@ export const input = {
   lookDY: 0,
   run: false,
   jump: false,
+  /** pinch zoom: camera distance multiplier (persisted via settings) */
+  zoom: 1,
 };
 
 export const DEFAULT_LOOK: AvatarLook = {

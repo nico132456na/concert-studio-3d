@@ -58,6 +58,19 @@ export function SettingsModal() {
         ]}
       />
       <div style={{ height: 10 }} />
+      <div className="section-title">Touch controls (Performer & Artist Life)</div>
+      <Seg value={s.joyMode} onChange={(v) => s.update({ joyMode: v as 'floating' | 'fixed' })} options={[{ v: 'floating', label: 'Floating joystick' }, { v: 'fixed', label: 'Fixed joystick' }]} />
+      <div style={{ height: 10 }} />
+      <Slider label="Joystick size" value={s.joySize} min={110} max={240} step={5} onChange={(v) => s.update({ joySize: v })} format={(v) => `${Math.round(v)} px`} />
+      <Slider label="Joystick opacity" value={s.joyOpacity} min={0.25} max={1} onChange={(v) => s.update({ joyOpacity: v })} format={(v) => `${Math.round(v * 100)}%`} />
+      <Slider label="Movement sensitivity" value={s.moveSens} min={0.6} max={1.6} onChange={(v) => s.update({ moveSens: v })} format={(v) => `${v.toFixed(2)}×`} />
+      <Slider label="Walking speed" value={s.walkSpeed} min={1.6} max={3.6} onChange={(v) => s.update({ walkSpeed: v })} format={(v) => `${v.toFixed(1)} m/s`} />
+      <Slider label="Running speed" value={s.runSpeed} min={3.6} max={8} onChange={(v) => s.update({ runSpeed: v })} format={(v) => `${v.toFixed(1)} m/s`} />
+      <Slider label="Camera sensitivity" value={s.lookSens} min={0.3} max={2.5} onChange={(v) => s.update({ lookSens: v })} format={(v) => `${v.toFixed(2)}×`} />
+      <Slider label="Camera distance" value={s.camDistance} min={0.45} max={2.2} onChange={(v) => s.update({ camDistance: v })} format={(v) => `${v.toFixed(2)}×`} />
+      <Toggle label="Invert camera up/down" value={s.invertY} onChange={(v) => s.update({ invertY: v })} />
+      <button className="btn small" onClick={() => s.update({ joySize: 160, joyOpacity: 0.7, joyMode: 'floating', moveSens: 1, walkSpeed: 2.6, runSpeed: 5.6, lookSens: 1, invertY: false, camDistance: 1 })}>Reset controls</button>
+      <div className="section-title">Editor camera</div>
       <Slider label="Rotate sensitivity" value={s.rotateSpeed} min={0.2} max={2} onChange={(v) => s.update({ rotateSpeed: v })} />
       <Slider label="Zoom sensitivity" value={s.zoomSpeed} min={0.3} max={2.5} onChange={(v) => s.update({ zoomSpeed: v })} />
       <div className="hint">One finger rotates · two fingers pan · pinch zooms · double-tap an object to focus.</div>

@@ -6,7 +6,8 @@ import { useLife, type LifeCam } from '../../life/state';
 import { useCareer, currentTier } from '../../life/careerStore';
 import { lifeActions } from '../../life/actions';
 import { input, doAction } from '../../performer/state';
-import { Joystick, LookLayer, Swatches, SKINS, HAIRS, TOPS, BOTTOMS, COLORS } from '../performer/PerformerMode';
+import { Swatches, SKINS, HAIRS, TOPS, BOTTOMS, COLORS } from '../performer/PerformerMode';
+import { MoveZone, LookZone } from '../controls/TouchControls';
 import { ShowPicker } from './ShowPicker';
 import { screenshot } from '../../performer/recorder';
 import { saveBlob } from '../../util/misc';
@@ -157,7 +158,7 @@ export function LifeMode() {
       <ErrorBoundary label="Artist life">
         <LifeWorld />
       </ErrorBoundary>
-      <LookLayer />
+      <LookZone />
       <div className="perf-top">
         <button className="btn" onClick={lifeActions.exit} aria-label="Exit artist life"><X size={18} /> Exit</button>
         <div className="badge" style={{ fontSize: 13, padding: '8px 12px' }}>📍 {where}</div>
@@ -177,7 +178,7 @@ export function LifeMode() {
         <button className="icon-btn boxed" onClick={snap} aria-label="Screenshot"><Camera size={20} /></button>
       </div>
 
-      {(onFoot || !ui.autopilot) && !blocked && <Joystick />}
+      {(onFoot || !ui.autopilot) && !blocked && <MoveZone />}
 
       {ui.phase === 'home' && !blocked && !ui.prompt && (
         <div className="life-hint">Walk around your home · talk to your team · record in the studio · pick a car in the garage to drive to the show</div>
