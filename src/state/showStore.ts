@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+
+export type CrowdMoment = 'none' | 'handsUp' | 'wave' | 'sing' | 'phones' | 'cheer' | 'clap';
 import type { Atmosphere, FixtureLook, LedLook, LightScene } from '../types';
 
 /**
@@ -22,6 +24,8 @@ interface ShowState {
   bpm: number;
   hype: number;
   phoneLights: boolean;
+  /** crowd-wide moment triggered by the performer or a cue */
+  crowdMoment: { kind: CrowdMoment; t: number };
   set: (p: Partial<ShowState>) => void;
   activateScene: (scene: LightScene, fade?: number) => void;
   clearOverride: () => void;
@@ -45,6 +49,7 @@ export const useShow = create<ShowState>((set, get) => ({
   bpm: 124,
   hype: 0,
   phoneLights: false,
+  crowdMoment: { kind: 'none', t: 0 },
   set: (p) => set(p),
   activateScene: (scene, fade) =>
     set({
