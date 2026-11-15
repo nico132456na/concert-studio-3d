@@ -11,7 +11,8 @@ import { enterPerformer } from '../../performer/flow';
 import { PromptModal, Toggle, Seg, Slider } from '../components';
 import { ctx } from '../../three/interaction';
 import * as THREE from 'three';
-import type { Vec3 } from '../../types';
+import type { TimeOfDay, Vec3 } from '../../types';
+import { getArena } from '../../data/arenas';
 import { uid } from '../../util/misc';
 import { toast } from '../../state/uiStore';
 import { randomize } from './actions';
@@ -210,8 +211,17 @@ function SavedCameras() {
 function LightControls() {
   const st = useSettings();
   const ui = useUI();
+  const arenaId = useProject((s) => s.project?.arenaId);
+  const time = useProject((s) => s.project?.timeOfDay) ?? 'night';
+  const outdoor = arenaId ? getArena(arenaId).sky !== 'indoor' : false;
   return (
     <>
+      {outdoor && (
+        <>
+          <div className="section-title">Time of day</div>
+          <Seg value={time} onChange={(v) => useProject.getState().mutate((p) => ({ ...p, timeOfDay: v as TimeOfDay }))} options={[{ v: 'day', label: 'Day' }, { v: 'evening', label: 'Evening' }, { v: 'night', label: 'Night' }]} />
+        </>
+      )}
       <div className="section-title">Visibility & lighting</div>
       <Slider label="Exposure" value={st.exposure} min={0.4} max={2.2} onChange={(v) => st.update({ exposure: v })} format={(v) => `${v.toFixed(2)}×`} />
       <Slider label="Ambient light" value={st.ambient} min={0.2} max={2.5} onChange={(v) => st.update({ ambient: v })} format={(v) => `${Math.round(v * 100)}%`} />

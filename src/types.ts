@@ -1,5 +1,6 @@
 export type Vec3 = [number, number, number];
 
+export type TimeOfDay = 'day' | 'evening' | 'night';
 export type TextureKind = 'none' | 'brushed' | 'concrete' | 'wood' | 'fabric' | 'grid' | 'diamond' | 'carbon' | 'paint' | 'plastic' | 'pleat' | 'deck';
 
 export interface MaterialSpec {
@@ -214,6 +215,8 @@ export interface Project {
   savedColors: string[];
   performer?: PerformerData;
   savedCameras?: { id: string; name: string; pos: Vec3; target: Vec3 }[];
+  /** open-air venues: time of day */
+  timeOfDay?: TimeOfDay;
 }
 
 export interface ProjectMeta {

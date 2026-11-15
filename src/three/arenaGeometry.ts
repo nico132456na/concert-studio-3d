@@ -218,8 +218,6 @@ function buildBowl(a: ArenaDef): ArenaBuild {
     for (let x = -b.a; x <= b.a; x += 8) struct.push(boxAt(0.7, 1.4, (b.b + outer) * 1.8, x, ceil - 1.5, b.cz, steel));
     for (let z = b.cz - b.b; z <= b.cz + b.b; z += 10) struct.push(boxAt((b.a + outer) * 1.8, 1.0, 0.6, 0, ceil - 2.6, z, steel));
     void ext;
-    // center-hung scoreboard style cube (pushed back behind audience area for end-stage layout)
-    struct.push(boxAt(8, 5, 8, 0, ceil - 9, b.cz + b.b * 0.35, '#111216'));
     // house PA clusters
     for (const [sx, sz] of [[-1, 0.2], [1, 0.2], [-0.6, 0.75], [0.6, 0.75]]) {
       for (let j = 0; j < 6; j++) struct.push(boxAt(1.2, 0.45, 1, sx * b.a * 0.55, ceil - 6 - j * 0.48, b.cz + sz * b.b, '#0d0d0f'));
