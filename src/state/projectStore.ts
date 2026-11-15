@@ -113,7 +113,13 @@ export function sanitizeProject(raw: any): Project {
     customPresets: Array.isArray(raw.customPresets) ? raw.customPresets : [],
     savedColors: Array.isArray(raw.savedColors) ? raw.savedColors : [],
   };
-  p.objects = p.objects.map((o) => ({ ...o, rot: Array.isArray(o.rot) ? o.rot : [0, 0, 0] }));
+  p.objects = p.objects.map((o) => ({
+    ...o,
+    rot: Array.isArray(o.rot) ? o.rot : [0, 0, 0],
+    // v2 graphics: the old 48 px default becomes native-resolution LED
+    led: o.led && o.led.resolution === 48 && !(raw as any).ledV2 ? { ...o.led, resolution: 0 } : o.led,
+  }));
+  (p as any).ledV2 = true;
   return p;
 }
 

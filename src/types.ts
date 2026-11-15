@@ -1,6 +1,6 @@
 export type Vec3 = [number, number, number];
 
-export type TextureKind = 'none' | 'brushed' | 'concrete' | 'wood' | 'fabric' | 'grid' | 'diamond' | 'carbon';
+export type TextureKind = 'none' | 'brushed' | 'concrete' | 'wood' | 'fabric' | 'grid' | 'diamond' | 'carbon' | 'paint' | 'plastic' | 'pleat' | 'deck';
 
 export interface MaterialSpec {
   preset: string;
@@ -35,6 +35,8 @@ export interface LedSpec {
   text: string;
   mediaId?: string;
   mediaType?: 'image' | 'video';
+  /** physical pixel pitch in millimetres (native mode) */
+  pitch?: number;
 }
 
 export type ObjectKind =

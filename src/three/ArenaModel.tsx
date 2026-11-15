@@ -139,7 +139,7 @@ function AtmosphereSync({ arena }: { arena: ArenaDef }) {
   return (
     <>
       <hemisphereLight ref={hemi} args={['#8aa0c8', '#1a1410', 0.3]} />
-      <directionalLight ref={dir} position={[30, 60, 50]} intensity={0.2} color="#c8d4ff" />
+      <directionalLight ref={dir} position={[30, 60, 50]} intensity={0.2} color="#c8d4ff" castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.04} shadow-camera-left={-70} shadow-camera-right={70} shadow-camera-top={70} shadow-camera-bottom={-70} shadow-camera-near={1} shadow-camera-far={240} />
       <directionalLight ref={fill} position={[-40, 30, 30]} intensity={0} color="#eef2ff" />
     </>
   );

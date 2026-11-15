@@ -20,6 +20,8 @@ uniform float uHasMap;
 uniform vec3 uC1;
 uniform vec3 uC2;
 uniform vec2 uRes;
+uniform vec2 uSize;
+uniform float uPitch;
 uniform sampler2D uMap;
 varying vec2 vUv;
 #include <common>
@@ -227,6 +229,7 @@ void main() {
   vec2 uv = vUv;
   float mask = 1.0;
   if (uRes.x > 0.0) {
+    // stylised retro pixelation
     vec2 g = uv * uRes;
     vec2 cell = floor(g);
     vec2 f = fract(g);
@@ -234,9 +237,23 @@ void main() {
     float pm = smoothstep(0.5, 0.36, abs(f.x - 0.5)) * smoothstep(0.5, 0.36, abs(f.y - 0.5));
     float px = max(fwidth(g.x), fwidth(g.y));
     mask = mix(pm, 1.0, smoothstep(0.2, 0.55, px));
+  } else {
+    // native resolution: physical pixel pitch only resolves up close (filtered to avoid moire)
+    vec2 g = uv * uSize / uPitch;
+    vec2 f = fract(g);
+    float pm = smoothstep(0.5, 0.28, abs(f.x - 0.5)) * smoothstep(0.5, 0.28, abs(f.y - 0.5));
+    float px = max(fwidth(g.x), fwidth(g.y));
+    mask = mix(pm, 1.0, smoothstep(0.12, 0.5, px));
   }
+  // 500 mm cabinet seams
+  vec2 cb = vUv * uSize / 0.5;
+  vec2 cd = min(fract(cb), 1.0 - fract(cb));
+  vec2 cw = fwidth(cb);
+  float seam = max(1.0 - smoothstep(0.004, 0.004 + cw.x, cd.x), 1.0 - smoothstep(0.004, 0.004 + cw.y, cd.y));
+  seam *= 1.0 - smoothstep(0.015, 0.06, max(cw.x, cw.y));
   vec3 c = visual(uv, uTime);
-  c *= uBright * mix(0.25, 1.0, mask);
+  // calibrated so full-white content sits just above the bloom threshold instead of blowing out
+  c *= uBright * 0.62 * mix(0.25, 1.0, mask) * (1.0 - 0.55 * seam);
   c += vec3(0.008);
   gl_FragColor = vec4(c, 1.0);
   #include <tonemapping_fragment>
@@ -259,6 +276,8 @@ export function createLedMaterial(side: THREE.Side = THREE.FrontSide) {
       uC1: { value: new THREE.Color('#2a7bff') },
       uC2: { value: new THREE.Color('#9b2aff') },
       uRes: { value: new THREE.Vector2(0, 0) },
+      uSize: { value: new THREE.Vector2(10, 5) },
+      uPitch: { value: 0.0039 },
       uMap: { value: null },
     },
   });

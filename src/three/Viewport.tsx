@@ -1,4 +1,4 @@
-import { memo, Suspense, useEffect, useMemo } from 'react';
+import { memo, Suspense, useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Grid, PerformanceMonitor, Html } from '@react-three/drei';
@@ -35,9 +35,11 @@ function Engine() {
 
 function PerfProbe() {
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
   useEffect(() => {
     gl.info.autoReset = false;
-  }, [gl]);
+    if (import.meta.env.DEV) (window as any).__scene = scene;
+  }, [gl, scene]);
   let frames = 0;
   let acc = 0;
   useFrame((_, dt) => {
@@ -208,6 +210,9 @@ export const Viewport = memo(function Viewport({ mode, arenaId }: { mode: Viewpo
   const graphics = useSettings((s) => s.graphics);
   const setEffective = useSettings((s) => s.setEffective);
   const q = QUALITY[quality];
+  // adaptive resolution: scale the pixel ratio first, only then drop a quality tier (auto mode)
+  const [dprScale, setDprScale] = useState(1);
+  const maxDpr = Math.min(q.dpr, window.devicePixelRatio || 1);
   const onMissed = (e: MouseEvent) => {
     if (mode !== 'editor') return;
     if (e.type !== 'click') return;
@@ -219,8 +224,8 @@ export const Viewport = memo(function Viewport({ mode, arenaId }: { mode: Viewpo
     <Canvas
       key={quality}
       className="viewport-canvas"
-      dpr={[1, Math.min(q.dpr, window.devicePixelRatio || 1)]}
-      shadows={q.shadows}
+      dpr={Math.max(0.75, maxDpr * dprScale)}
+      shadows={q.shadows ? 'soft' : false}
       gl={{ antialias: quality !== 'low', powerPreference: 'high-performance', alpha: false, stencil: false }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
@@ -229,16 +234,17 @@ export const Viewport = memo(function Viewport({ mode, arenaId }: { mode: Viewpo
       onPointerMissed={onMissed}
       style={{ touchAction: 'none' }}
     >
-      {graphics === 'auto' && (
-        <PerformanceMonitor
-          flipflops={2}
-          onDecline={() => {
-            if (quality === 'ultra') setEffective('high');
-            else if (quality === 'high') setEffective('medium');
-            else if (quality === 'medium') setEffective('low');
-          }}
-        />
-      )}
+      <PerformanceMonitor
+        flipflops={4}
+        onIncline={() => setDprScale((s) => Math.min(1, s + 0.1))}
+        onDecline={() => {
+          if (dprScale > 0.7) return setDprScale((s) => Math.max(0.6, s - 0.15));
+          if (graphics !== 'auto') return;
+          if (quality === 'ultra') setEffective('high');
+          else if (quality === 'high') setEffective('medium');
+          else if (quality === 'medium') setEffective('low');
+        }}
+      />
       <Suspense fallback={null}>
         <Scene mode={mode} arenaId={arenaId} />
       </Suspense>

@@ -15,8 +15,10 @@ import { useProject } from '../state/projectStore';
 import { useUI } from '../state/uiStore';
 import { useSettings } from '../state/settingsStore';
 import { fmt } from '../util/misc';
+import { StageDetail } from './StageDetail';
 
 interface Props {
+  detail?: boolean;
   obj: StageObject;
   selected: boolean;
   interactive: boolean;
@@ -60,6 +62,9 @@ function LedSurface({ obj, geometry, side }: { obj: StageObject; geometry: THREE
       if (aspect >= 1) u.uRes.value.set(Math.round(res * aspect), res);
       else u.uRes.value.set(res, Math.round(res / aspect));
     } else u.uRes.value.set(0, 0);
+    const sh = obj.kind === 'ledFloor' || obj.kind === 'ledCeiling' || obj.kind === 'ledTunnel' || obj.kind === 'ledArch' ? d : h;
+    u.uSize.value.set(Math.max(0.1, sh * aspect), Math.max(0.1, sh));
+    u.uPitch.value = (led.pitch ?? (obj.kind === 'ledFloor' ? 6.9 : obj.kind === 'ledTransparent' ? 15.6 : obj.kind === 'ledSphere' || obj.kind === 'ledCylinder' ? 8 : 3.9)) / 1000;
     const map = vis === 'text' ? text ?? textTexture(led.text || ' ') : vis === 'media' ? media : null;
     u.uMap.value = map;
     u.uHasMap.value = map ? 1 : 0;
@@ -110,7 +115,7 @@ function edgesFor(g: THREE.BufferGeometry) {
   return e;
 }
 
-export const StageObjectMesh = memo(function StageObjectMesh({ obj, selected, interactive, showLabel, shadows, outlines }: Props) {
+export const StageObjectMesh = memo(function StageObjectMesh({ obj, selected, interactive, showLabel, shadows, outlines, detail = true }: Props) {
   const geo = getGeometry(obj.kind, obj.size, obj.outline);
   const whole = ledWholeSurface(obj.kind) || obj.material.preset === 'led';
   const material = useMemo(() => buildMaterial(obj.material, obj.size, geo.mainBack ? THREE.BackSide : THREE.FrontSide), [obj.material, geo.mainBack, Math.round(obj.size[0]), Math.round(obj.size[1]), Math.round(obj.size[2])]);
@@ -157,6 +162,7 @@ export const StageObjectMesh = memo(function StageObjectMesh({ obj, selected, in
           </lineSegments>
         )}
       </group>
+      {detail && <StageDetail obj={obj} />}
       </group>
       <Extras obj={obj} />
       {selected && showLabel && (

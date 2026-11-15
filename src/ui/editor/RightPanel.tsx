@@ -179,7 +179,7 @@ function SpeakerSection({ objs }: { objs: StageObject[] }) {
 
 /* ------------------------------ material tab ------------------------------ */
 
-const TEXTURES: TextureKind[] = ['none', 'brushed', 'concrete', 'wood', 'fabric', 'grid', 'diamond', 'carbon'];
+const TEXTURES: TextureKind[] = ['none', 'brushed', 'concrete', 'wood', 'fabric', 'pleat', 'deck', 'paint', 'plastic', 'grid', 'diamond', 'carbon'];
 
 function MaterialTab({ objs }: { objs: StageObject[] }) {
   const advancedMode = useSettings((s) => s.editorMode) === 'advanced';
@@ -340,9 +340,15 @@ function LedTab({ objs }: { objs: StageObject[] }) {
       <div className="divider" />
       <Slider label="Brightness" value={led.brightness} min={0} max={2} onChange={(v) => apply({ brightness: v }, 'b')} format={(v) => `${Math.round(v * 100)}%`} />
       <Slider label="Speed" value={led.speed} min={0} max={3} onChange={(v) => apply({ speed: v }, 's')} format={(v) => `${v.toFixed(1)}×`} />
-      {advanced && <Slider label="Pixel resolution" value={led.resolution} min={0} max={160} step={4} onChange={(v) => apply({ resolution: v }, 'r')} format={(v) => (v ? `${v} px` : 'Smooth')} />}
+      {advanced && <Slider label="Retro pixelation" value={led.resolution} min={0} max={160} step={4} onChange={(v) => apply({ resolution: v }, 'r')} format={(v) => (v ? `${v} px` : 'Off (native)')} />}
+      {advanced && (
+        <>
+          <div className="field-label" style={{ marginTop: 10 }}>Pixel pitch</div>
+          <Seg value={String(led.pitch ?? 3.9)} onChange={(v) => apply({ pitch: parseFloat(v) })} options={['2.6', '3.9', '5.9', '10', '15.6'].map((v) => ({ v, label: `${v} mm` }))} />
+        </>
+      )}
       {!advanced && (
-        <Seg value={String(led.resolution ? 'led' : 'smooth')} onChange={(v) => apply({ resolution: v === 'led' ? 48 : 0 })} options={[{ v: 'led', label: 'LED pixels' }, { v: 'smooth', label: 'Smooth' }]} />
+        <Seg value={String(led.resolution ? 'led' : 'smooth')} onChange={(v) => apply({ resolution: v === 'led' ? 48 : 0 })} options={[{ v: 'smooth', label: 'Native (sharp)' }, { v: 'led', label: 'Retro pixels' }]} />
       )}
     </>
   );

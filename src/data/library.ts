@@ -172,7 +172,7 @@ export function isLedKind(kind: ObjectKind) {
 }
 
 export function defaultLed(over: Partial<LedSpec> = {}): LedSpec {
-  return { visual: 'gradient', color1: '#2a7bff', color2: '#9b2aff', brightness: 1, speed: 1, resolution: 48, text: 'CONCERT STUDIO', ...over };
+  return { visual: 'gradient', color1: '#2a7bff', color2: '#9b2aff', brightness: 1, speed: 1, resolution: 0, text: 'CONCERT STUDIO', ...over };
 }
 
 type ObjOver = Partial<Omit<StageObject, 'material' | 'led'>> & { material?: Partial<MaterialSpec> | string; led?: Partial<LedSpec> };
